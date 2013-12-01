@@ -1,0 +1,18 @@
+name: GlguysWrath
+main: com.gmail.emertens.glguyswrath.GlguysWrath
+version: 0.1
+author: glguy
+
+permissions:
+  glguyswrath.bypass:
+    default: op
+    description: bypass wrath restrictions
+  glguyswrath.create:
+    default: op
+    description: Able to curse items
+
+commands:
+  curseitem:
+     permission: glguyswrath.create
+     description: Curse the held item
+     usage: /<command>
