@@ -17,6 +17,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -24,30 +25,34 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class GlguysWrath extends JavaPlugin implements Listener {
 
-	private static final String CONSOLE_CURSE_MSG = ChatColor.RED + "Only players can curse items";
+	private static final String CONSOLE_CURSE_MSG = ChatColor.RED
+			+ "Only players can curse items";
 	private static final String FAILED_DROP_MSG = ChatColor.RED
 			+ "You'd rather kill with the sword than drop it!";
 	private static final String FAILED_INVENTORY_CLICK_MSG = ChatColor.RED
 			+ "The sword is terrified of being dropped and cuts your hand.";
-	private static final String DEATH_CLING_MSG = ChatColor.RED + "The sword clings to you.";
+	private static final String DEATH_CLING_MSG = ChatColor.RED
+			+ "The sword clings to you.";
 	private static final String FAILED_EAT_MSG = ChatColor.RED
 			+ "The sword craves blood. Food can wait!";
-	private static final String ATTACK_NONPLAYER_MSG = ChatColor.RED + "The sword demands player blood and cuts your hand instead!";
-	private static final String FAILED_PICKUP_MSG = ChatColor.RED + "The sword consumes an item to hold off its hunger";
+	private static final String ATTACK_NONPLAYER_MSG = ChatColor.RED
+			+ "The sword demands player blood and cuts your hand instead!";
+	private static final String FAILED_PICKUP_MSG = ChatColor.RED
+			+ "The sword consumes an item to hold off its hunger";
 	private static final String CURSED_ITEM_NAME = "glguy's wrath";
 	private static final String LORE1 = ChatColor.DARK_PURPLE + "Cursed";
-	
+
 	private void curseItem(final ItemStack stack) {
 		if (stack == null) {
 			return;
 		}
-		
+
 		final ItemMeta meta = stack.getItemMeta();
 		meta.setDisplayName(CURSED_ITEM_NAME);
 		meta.setLore(Arrays.asList(LORE1));
 		stack.setItemMeta(meta);
 	}
-	
+
 	private boolean hasBypass(final Player player) {
 		return player.hasPermission("glguyswrath.bypass");
 	}
@@ -124,6 +129,8 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 		player.damage(1);
 		event.setCancelled(true);
 
+		// The close inventory event must not be called while handling inventory
+		// click events
 		Bukkit.getScheduler().runTask(this, new Runnable() {
 			@Override
 			public void run() {
@@ -135,43 +142,41 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 	@EventHandler
 	public void onDeath(final PlayerDeathEvent event) {
 		final List<ItemStack> drops = event.getDrops();
-		final Player player = event.getEntity();
-
-		ItemStack wrath = null;
-		for (ItemStack x : drops) {
-			if (isCursed(x)) {
-				wrath = x;
-				break;
-			}
-		}
-
-		final ItemStack fwrath;
+		final Player victim = event.getEntity();
+		final ItemStack victimWrath = findCursedItem(drops);
+		final ItemStack transferItem;
 
 		// Couldn't find wrath, maybe the killer was holding it
-		if (wrath == null) {
-			final Player killer = player.getKiller();
-			if (killer == null)
+		if (victimWrath == null) {
+			final Player killer = victim.getKiller();
+			if (killer == null) {
 				return; // No killer, no wrath found, all done
-
-			ItemStack x = killer.getItemInHand();
-			if (isCursed(x)) {
-				fwrath = x;
-				killer.getInventory().remove(x);
-			} else {
-				return; // Killer didn't have it either, all done
 			}
 
-			event.setDeathMessage(killer.getDisplayName() + " left the cursed sword in " + player.getDisplayName() + "'s chest");
+			final ItemStack murderWeapon = killer.getItemInHand();
+			if (!isCursed(murderWeapon)) {
+				// Victim wasn't cursed and wrath wasn't murder weapon, all done
+				return;
+			}
+
+			transferItem = murderWeapon;
+			killer.getInventory().remove(murderWeapon);
+
+			event.setDeathMessage(killer.getDisplayName()
+					+ " left the cursed sword in " + victim.getDisplayName()
+					+ "'s chest");
 		} else {
-			drops.remove(wrath);
-			fwrath = wrath;
+			drops.remove(victimWrath);
+			transferItem = victimWrath;
 		}
 
+		// The item must be added to the player's inventory AFTER the death
+		// event is completed
 		Bukkit.getScheduler().runTask(this, new Runnable() {
 			@Override
 			public void run() {
-				player.getInventory().addItem(fwrath);
-				player.sendMessage(DEATH_CLING_MSG);
+				victim.getInventory().addItem(transferItem);
+				victim.sendMessage(DEATH_CLING_MSG);
 			}
 		});
 	}
@@ -239,20 +244,26 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 		}
 	}
 
-	private boolean isCursedPlayer(final Player player) {
-		for (ItemStack x : player.getInventory()) {
+	private ItemStack findCursedItem(Iterable<ItemStack> xs) {
+		for (final ItemStack x : xs) {
 			if (isCursed(x)) {
-				return true;
+				return x;
 			}
 		}
-		return false;
+		return null;
 	}
-	
+
+	private boolean isCursedPlayer(final Player player) {
+		return findCursedItem(player.getInventory()) != null;
+	}
+
 	@EventHandler(ignoreCancelled = true)
 	public void onPickup(final PlayerPickupItemEvent event) {
-		
+
 		// Only check 5% of pickups
-		if (Math.random() > 0.05) { return; }
+		if (Math.random() > 0.05) {
+			return;
+		}
 
 		final Player player = event.getPlayer();
 		if (hasBypass(player) || !isCursedPlayer(player)) {
@@ -264,4 +275,35 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 		event.getItem().remove();
 	}
 
+	@EventHandler(ignoreCancelled = true)
+	public void onItemSwitch(final PlayerItemHeldEvent event) {
+		
+		final ItemStack heldItem = event.getPlayer().getInventory().getItem(event.getNewSlot());
+		if (!isCursed(heldItem)) {
+			return;
+		}
+		
+		final Player player = event.getPlayer();
+		final List<Entity> nearby = player.getNearbyEntities(10, 10, 10);
+		
+		Player nearestPlayer = null;
+		double distanceSquared = 0;
+		
+		for (Entity e : nearby) {
+			if (e instanceof Player) {
+				Player neighbor = (Player) e;
+				final double neighborDistance = player.getLocation().distanceSquared(neighbor.getLocation());
+				if (nearestPlayer == null || neighborDistance < distanceSquared) {
+					nearestPlayer = neighbor;
+					distanceSquared = neighborDistance;
+				}
+			}
+		}
+		
+		if (nearestPlayer == null) {
+			return;
+		}
+		
+		player.sendMessage(ChatColor.RED + "You feel an urge kill " + nearestPlayer.getDisplayName());
+	}
 }
