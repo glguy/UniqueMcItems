@@ -24,8 +24,18 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class GlguysWrath extends JavaPlugin implements Listener {
 
-	private final static String CURSED_ITEM_NAME = "glguy's wrath";
-	private final static String LORE1 = ChatColor.DARK_PURPLE + "Cursed";
+	private static final String CONSOLE_CURSE_MSG = ChatColor.RED + "Only players can curse items";
+	private static final String FAILED_DROP_MSG = ChatColor.RED
+			+ "You'd rather kill with the sword than drop it!";
+	private static final String FAILED_INVENTORY_CLICK_MSG = ChatColor.RED
+			+ "The sword is terrified of being dropped and cuts your hand.";
+	private static final String DEATH_CLING_MSG = ChatColor.RED + "The sword clings to you.";
+	private static final String FAILED_EAT_MSG = ChatColor.RED
+			+ "The sword craves blood. Food can wait!";
+	private static final String ATTACK_NONPLAYER_MSG = ChatColor.RED + "The sword demands player blood and cuts your hand instead!";
+	private static final String FAILED_PICKUP_MSG = ChatColor.RED + "The sword consumes an item to hold off its hunger";
+	private static final String CURSED_ITEM_NAME = "glguy's wrath";
+	private static final String LORE1 = ChatColor.DARK_PURPLE + "Cursed";
 	
 	private void curseItem(final ItemStack stack) {
 		if (stack == null) {
@@ -51,7 +61,7 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 				Player player = (Player) sender;
 				curseItem(player.getItemInHand());
 			} else {
-				sender.sendMessage(ChatColor.RED + "Only players can curse items");
+				sender.sendMessage(CONSOLE_CURSE_MSG);
 			}
 			return true;
 		} else {
@@ -88,8 +98,7 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 		}
 
 		if (isCursed(event.getItemDrop().getItemStack())) {
-			player.sendMessage(ChatColor.RED
-					+ "You'd rather kill with the sword than drop it!");
+			player.sendMessage(FAILED_DROP_MSG);
 			event.setCancelled(true);
 		}
 	}
@@ -111,8 +120,7 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 			return;
 		}
 
-		player.sendMessage(ChatColor.RED
-				+ "The sword is terrified of being dropped and cuts your hand.");
+		player.sendMessage(FAILED_INVENTORY_CLICK_MSG);
 		player.damage(1);
 		event.setCancelled(true);
 
@@ -163,7 +171,7 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 			@Override
 			public void run() {
 				player.getInventory().addItem(fwrath);
-				player.sendMessage(ChatColor.RED + "The sword clings to you.");
+				player.sendMessage(DEATH_CLING_MSG);
 			}
 		});
 	}
@@ -197,8 +205,7 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 		case COOKED_FISH:
 		case ROTTEN_FLESH:
 			event.setCancelled(true);
-			player.sendMessage(ChatColor.RED
-					+ "The sword craves blood. Food can wait!");
+			player.sendMessage(FAILED_EAT_MSG);
 		default:
 		}
 	}
@@ -227,7 +234,7 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 			} else {
 				player.damage(2);
 				event.setCancelled(true);
-				player.sendMessage(ChatColor.RED + "The sword demands player blood and cuts your hand instead!");
+				player.sendMessage(ATTACK_NONPLAYER_MSG);
 			}
 		}
 	}
@@ -252,7 +259,7 @@ public class GlguysWrath extends JavaPlugin implements Listener {
 			return;
 		}
 
-		player.sendMessage(ChatColor.RED + "The sword consumes an item to hold off its hunger");
+		player.sendMessage(FAILED_PICKUP_MSG);
 		event.setCancelled(true);
 		event.getItem().remove();
 	}
