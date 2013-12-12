@@ -1,18 +1,26 @@
 name: GlguysWrath
 main: com.gmail.emertens.glguyswrath.GlguysWrath
-version: 0.1
+version: 0.3
 author: glguy
 
 permissions:
   glguyswrath.bypass:
     default: op
     description: bypass wrath restrictions
-  glguyswrath.create:
+  glguyswrath.createcurse:
     default: op
-    description: Able to curse items
+    description: Able to create special items
+  glguyswrath.creategem:
+    default: op
+    description: Able to create flight gems
+
 
 commands:
   curseitem:
-     permission: glguyswrath.create
+     permission: glguyswrath.createcurse
      description: Curse the held item
+     usage: /<command>
+  flightgem:
+     permission: glguyswrath.creategem
+     description: Create a flight gem
      usage: /<command>
