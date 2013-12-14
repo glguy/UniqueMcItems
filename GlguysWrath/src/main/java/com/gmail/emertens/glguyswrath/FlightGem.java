@@ -32,6 +32,10 @@ import java.util.List;
 
 /**
  * Created by Eric Mertens on 12/11/13.
+ *
+ * This class provides the functionality of a gem that grants flight
+ * when held, but which can not be horded.
+ *
  */
 public class FlightGem implements Listener, CommandExecutor {
 
@@ -156,8 +160,7 @@ public class FlightGem implements Listener, CommandExecutor {
         final ItemMeta meta = heldItem.getItemMeta();
         if (meta == null) return false;
         final List<String> lore = meta.getLore();
-        if (lore == null || lore.size() == 0) return false;
-        return lore.get(0).equals(FLIGHT);
+        return lore != null && !lore.isEmpty() && lore.get(0).equals(FLIGHT);
     }
 
     @EventHandler(ignoreCancelled = true)

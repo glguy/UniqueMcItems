@@ -17,13 +17,15 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.Plugin;
 
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * Created by emertens on 12/11/13.
+ * Created by Eric Mertens on 12/11/13.
+ *
+ * This class provides support for all the cursed sword functionality.
+ *
  */
 public class CursedListener implements Listener, CommandExecutor {
 
@@ -36,8 +38,6 @@ public class CursedListener implements Listener, CommandExecutor {
             + "The sword is terrified of being dropped and cuts your hand.";
     private static final String DEATH_CLING_MSG = ChatColor.RED
             + "The sword clings to you.";
-    private static final String FAILED_EAT_MSG = ChatColor.GOLD
-            + "There's no time for food now!";
     private static final String ATTACK_NONPLAYER_MSG = ChatColor.RED
             + "The sword demands only player blood and cuts your hand instead!";
     private static final String FAILED_PICKUP_MSG = ChatColor.RED
@@ -78,9 +78,7 @@ public class CursedListener implements Listener, CommandExecutor {
         if (name == null || !name.equals(CURSED_ITEM_NAME))
             return false;
         final List<String> lore = im.getLore();
-        if (lore == null || lore.isEmpty() || !lore.get(0).equals(LORE1))
-            return false;
-        return true;
+        return lore != null && !lore.isEmpty() && lore.get(0).equals(LORE1);
     }
 
     @EventHandler(ignoreCancelled = true)
