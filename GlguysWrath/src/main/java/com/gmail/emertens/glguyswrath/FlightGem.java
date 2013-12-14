@@ -7,10 +7,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.HumanEntity;
-import org.bukkit.entity.Item;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityCombustEvent;
@@ -18,6 +15,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.ItemDespawnEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryPickupItemEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.*;
@@ -298,18 +296,37 @@ public class FlightGem implements Listener, CommandExecutor {
         if (human instanceof Player) {
             final Player player = (Player) human;
 
+            if (!isFlightGem(event.getCurrentItem()) && !isFlightGem(event.getCursor())) return;
             if (plugin.hasBypass(player)) return;
 
-            if (!isFlightGem(event.getCurrentItem())) return;
             player.setAllowFlight(false);
 
-            if (event.getInventory().getType() == InventoryType.PLAYER) return;
-            if (event.getInventory().getType() == InventoryType.CRAFTING) return;
-            if (event.getInventory().getType() == null) return;
+            final InventoryType invType = event.getInventory().getType();
+            final InventoryType.SlotType slotType = event.getSlotType();
+
+            if (invType == InventoryType.CRAFTING && slotType == InventoryType.SlotType.CONTAINER ||
+                invType == InventoryType.CRAFTING && slotType == InventoryType.SlotType.QUICKBAR) {
+                return;
+            }
 
             player.sendMessage(ChatColor.RED + "It would be tragic to lock this gem away.");
-            plugin.getLogger().info("Canceling flight gem inventory click " + event.getInventory().getType());
+            plugin.getLogger().info("Canceling flight gem inventory click " + invType + ":" + slotType + " for " + player.getName());
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onIventoryDrag(final InventoryDragEvent event) {
+        final HumanEntity human = event.getWhoClicked();
+        if (human instanceof Player) {
+            final Player player = (Player)human;
+
+            if (!isFlightGem(event.getOldCursor())) return;
+
+            if (plugin.hasBypass(player)) return;
+
+            event.setCancelled(true);
+            plugin.getLogger().info("Canceling inventory drag for " + player.getName());
         }
     }
 
@@ -343,7 +360,7 @@ public class FlightGem implements Listener, CommandExecutor {
     }
 
     @EventHandler(ignoreCancelled = true)
-    void onUnloadChunk(final ChunkUnloadEvent event) {
+    public void onUnloadChunk(final ChunkUnloadEvent event) {
         for (final Entity e : event.getChunk().getEntities()) {
             if (e instanceof Item) {
                 final Item item = (Item) e;
@@ -355,6 +372,19 @@ public class FlightGem implements Listener, CommandExecutor {
                     respawnGem();
                 }
             }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onItemFramePlace(final PlayerInteractEntityEvent event) {
+        final Entity target = event.getRightClicked();
+        if (target instanceof ItemFrame) {
+            final Player player = event.getPlayer();
+            if (plugin.hasBypass(player)) return;
+            if (!isFlightGem(player.getItemInHand())) return;
+            event.setCancelled(true);
+            plugin.getLogger().info("Prevented item frame placement by " + player.getName());
+            takeGemFromPlayer(player);
         }
     }
 }
