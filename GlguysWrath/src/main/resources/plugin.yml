@@ -13,7 +13,12 @@ permissions:
   glguyswrath.creategem:
     default: op
     description: Able to create flight gems
-
+  glguyswrath.setflightrespawn:
+    default: op
+    description: Able to set the flight gem respawn block
+  glguyswrath.findgem:
+    default: true
+    description: Allow the use of /findgem
 
 commands:
   curseitem:
@@ -23,4 +28,12 @@ commands:
   flightgem:
      permission: glguyswrath.creategem
      description: Create a flight gem
+     usage: /<command>
+  setflightgemrespawn:
+     permission: glguyswrath.setflightrespawn
+     description: Set the respawn block for the flight gem
+     usage: /<command>
+  findgem:
+     permission: glguyswrath.findgem
+     description: Point compass at gem location
      usage: /<command>
