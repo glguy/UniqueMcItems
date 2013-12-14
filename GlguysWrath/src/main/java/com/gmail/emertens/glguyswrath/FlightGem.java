@@ -151,7 +151,7 @@ public class FlightGem implements Listener, CommandExecutor {
         }
     }
 
-    private boolean isFlightGem(final ItemStack heldItem) {
+    static boolean isFlightGem(final ItemStack heldItem) {
         if (heldItem == null) return false;
         final ItemMeta meta = heldItem.getItemMeta();
         if (meta == null) return false;

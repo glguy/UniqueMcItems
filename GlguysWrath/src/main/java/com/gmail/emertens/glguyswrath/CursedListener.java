@@ -7,6 +7,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -170,40 +171,6 @@ public class CursedListener implements Listener, CommandExecutor {
     }
 
     @EventHandler(ignoreCancelled = true)
-    public void onEat(final PlayerItemConsumeEvent event) {
-        final Player player = event.getPlayer();
-
-        if (plugin.hasBypass(player) || !isCursedPlayer(player)) {
-            return;
-        }
-
-        switch (event.getItem().getType()) {
-            case CARROT:
-            case POTATO:
-            case MELON:
-            case PORK:
-            case BREAD:
-            case APPLE:
-            case GOLDEN_APPLE:
-            case GOLDEN_CARROT:
-            case MUSHROOM_SOUP:
-            case COOKIE:
-            case GRILLED_PORK:
-            case BAKED_POTATO:
-            case RAW_CHICKEN:
-            case RAW_BEEF:
-            case RAW_FISH:
-            case COOKED_BEEF:
-            case COOKED_CHICKEN:
-            case COOKED_FISH:
-            case ROTTEN_FLESH:
-                event.setCancelled(true);
-                player.sendMessage(FAILED_EAT_MSG);
-            default:
-        }
-    }
-
-    @EventHandler(ignoreCancelled = true)
     public void onAttack(final EntityDamageByEntityEvent event) {
 
         // Only consider events where a player is damaging someone
@@ -277,6 +244,9 @@ public class CursedListener implements Listener, CommandExecutor {
             return;
         }
 
+        final Item item = event.getItem();
+        if (FlightGem.isFlightGem(item.getItemStack())) return;
+
         final Player player = event.getPlayer();
         if (plugin.hasBypass(player) || !isCursedPlayer(player)) {
             return;
@@ -284,7 +254,7 @@ public class CursedListener implements Listener, CommandExecutor {
 
         player.sendMessage(FAILED_PICKUP_MSG);
         event.setCancelled(true);
-        event.getItem().remove();
+        item.remove();
     }
 
     @EventHandler(ignoreCancelled = true)
