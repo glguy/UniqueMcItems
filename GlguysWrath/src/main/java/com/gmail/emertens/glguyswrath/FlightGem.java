@@ -96,12 +96,26 @@ public class FlightGem implements Listener, CommandExecutor {
             if (block == null) {
                 player.sendMessage(ChatColor.RED + "The gem is nowhere to be found.");
             } else {
-                player.setCompassTarget(block.getLocation());
-                player.sendMessage(ChatColor.RED + "Your compass points to the current gem location.");
+                final BlockState state = block.getState();
+                if (state instanceof InventoryHolder) {
+                    final InventoryHolder holder = (InventoryHolder)state;
+                    for (final ItemStack x : holder.getInventory()) {
+                        if (isFlightGem(x)) {
+                            player.sendMessage(ChatColor.GREEN + "Your compass points to the dispenser.");
+                            player.setCompassTarget(block.getLocation());
+                            return;
+                        }
+                    }
+                }
+                player.sendMessage(ChatColor.RED + "The gem is nowhere to be found.");
             }
+        } else if (gemTarget instanceof Player) {
+            final Player holder = (Player)gemTarget;
+            player.setCompassTarget(gemTarget.getLocation());
+            player.sendMessage(ChatColor.GREEN + "Your compass points to " + ChatColor.RESET + holder.getDisplayName() + ChatColor.GREEN + ".");
         } else {
             player.setCompassTarget(gemTarget.getLocation());
-            player.sendMessage(ChatColor.GREEN + "Your compass points to the current gem location.");
+            player.sendMessage(ChatColor.GREEN + "Your compass points to the fallen gem.");
         }
     }
 
