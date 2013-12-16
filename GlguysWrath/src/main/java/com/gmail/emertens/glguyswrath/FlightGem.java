@@ -10,10 +10,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityCombustEvent;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.ItemDespawnEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryPickupItemEvent;
@@ -23,6 +20,7 @@ import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.util.BlockIterator;
 
@@ -244,11 +242,13 @@ public class FlightGem implements Listener, CommandExecutor {
         final Boolean old = oldAllowFlightSettings.get(name);
         if (old != null) {
             player.setAllowFlight(old);
+            player.sendMessage(ChatColor.RED + "You feel drawn to the earth.");
         }
         oldAllowFlightSettings.remove(name);
     }
 
     public void allowFlight(final Player player) {
+        player.sendMessage(ChatColor.GREEN + "You feel as light as air!");
         oldAllowFlightSettings.put(player.getName(), player.getAllowFlight());
         player.setAllowFlight(true);
     }
@@ -260,14 +260,12 @@ public class FlightGem implements Listener, CommandExecutor {
 
         if (isFlightGem(inventory.getItem(event.getNewSlot()))) {
             allowFlight(player);
-            player.sendMessage(ChatColor.GREEN + "You feel as light as air!");
             return;
         }
 
         final ItemStack previousItem = inventory.getItem(event.getPreviousSlot());
         if (isFlightGem(previousItem)) {
             restoreFlightSetting(player);
-            player.sendMessage(ChatColor.RED + "You feel drawn to the earth.");
         }
     }
 
@@ -339,12 +337,10 @@ public class FlightGem implements Listener, CommandExecutor {
 
     @EventHandler(ignoreCancelled = true)
     public void onDrop(final PlayerDropItemEvent event) {
-        final Item drop = event.getItemDrop();
-        if (isFlightGem(drop.getItemStack())) {
-            trackGem(drop);
+        if (isFlightGem(event.getItemDrop().getItemStack())) {
             final Player player = event.getPlayer();
             restoreFlightSetting(player);
-            plugin.getLogger().info("Flight gem dropped by " + player.getName() + " at " + drop.getLocation());
+            plugin.getLogger().info("Flight gem dropped by " + player.getName());
         }
     }
 
@@ -356,25 +352,31 @@ public class FlightGem implements Listener, CommandExecutor {
             final Player player = event.getPlayer();
             trackGem(player);
             plugin.getLogger().info("Flight gem picked up by " + player.getName() + " at " + drop.getLocation());
+
+            if (playerWillPickupIntoHand(player)) {
+                allowFlight(player);
+            }
         }
+    }
+
+    private boolean playerWillPickupIntoHand(final Player player) {
+        final PlayerInventory inventory = player.getInventory();
+
+        if (player.getItemInHand().getType() != Material.AIR) return false;
+
+        for (int i = 0; i < inventory.getHeldItemSlot(); i++) {
+            if (inventory.getItem(i) == null) return false;
+        }
+
+        return true;
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onKill(final PlayerDeathEvent event) {
-        final Collection<ItemStack> gems = new ArrayList<>();
-        final Collection<ItemStack> drops = event.getDrops();
-        for (final ItemStack x : drops) {
-            if (isFlightGem(x)) {
-                gems.add(x);
-            }
-        }
-
-        if (!gems.isEmpty()) {
-            drops.removeAll(gems);
+        if (event.getDrops().contains(createGem())) {
             final Player player = event.getEntity();
-            restoreFlightSetting(player);
             plugin.getLogger().info("Flight gem dropped by dead " + player.getName());
-            trackGem(player.getWorld().dropItemNaturally(player.getLocation(), createGem()));
+            restoreFlightSetting(player);
         }
     }
 
@@ -383,6 +385,15 @@ public class FlightGem implements Listener, CommandExecutor {
         if (isFlightGem(event.getItem().getItemStack())) {
             plugin.getLogger().info("Prohibiting inventory pickup of flight gem");
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onItemSpawn(final ItemSpawnEvent event) {
+        final Item item = event.getEntity();
+        if (isFlightGem(item.getItemStack())) {
+            trackGem(item);
+            plugin.getLogger().info("Flight gem spawned at " + item.getLocation());
         }
     }
 
@@ -518,7 +529,7 @@ public class FlightGem implements Listener, CommandExecutor {
 
                 restoreFlightSetting(player);
                 player.setItemInHand(null);
-                trackGem(player.getWorld().dropItemNaturally(player.getLocation(), gem));
+                player.getWorld().dropItemNaturally(player.getLocation(), gem);
                 player.sendMessage(ChatColor.RED + "The gem slips from your fingers!");
                 plugin.getLogger().info("Flight gem slipped from " + player.getName());
             }
