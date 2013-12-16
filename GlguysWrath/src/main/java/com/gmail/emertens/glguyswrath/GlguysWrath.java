@@ -21,6 +21,7 @@ public class GlguysWrath extends JavaPlugin {
         this.getCommand("curseitem").setExecutor(cursedSword);
 
         final FlightGem flightGem = new FlightGem(this);
+        flightGem.initializeGemTarget();
         Bukkit.getPluginManager().registerEvents(flightGem, this);
         this.getCommand("flightgem").setExecutor(flightGem);
         this.getCommand("setflightgemrespawn").setExecutor(flightGem);

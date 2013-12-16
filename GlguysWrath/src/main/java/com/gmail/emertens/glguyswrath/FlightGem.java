@@ -26,24 +26,20 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.util.BlockIterator;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by Eric Mertens on 12/11/13.
- *
+ * <p/>
  * This class provides the functionality of a gem that grants flight
  * when held, but which can not be horded.
- *
  */
 public class FlightGem implements Listener, CommandExecutor {
 
     public static final String FLIGHT = "Flight";
     private GlguysWrath plugin;
-    private final static String CONSOLE_CREATE_MSG = "Console can't create flight gems";
     private Entity gemTarget = null;
+    private Map<String, Boolean> oldAllowFlightSettings = new HashMap<>();
 
     public FlightGem(GlguysWrath plugin) {
         this.plugin = plugin;
@@ -51,63 +47,148 @@ public class FlightGem implements Listener, CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
-        if (command.getName().equalsIgnoreCase("flightgem")) {
-
-            final Player player;
-            if (sender instanceof Player && args.length == 0) {
-                player = (Player) sender;
-            } else if (args.length == 1) {
-                player = Bukkit.getPlayer(args[0]);
-                if (player == null) {
-                    sender.sendMessage(ChatColor.RED + "Player not found");
-                    return true;
-                }
-            } else {
+        switch (command.getName()) {
+            case "flightgem":
+                return flightgemCommand(sender, args);
+            case "setflightgemrespawn":
+                return setflightgemdispenserCommand(sender, args);
+            case "findgem":
+                return findgemCommand(sender, args);
+            default:
                 return false;
-            }
-
-            final ItemStack gem = new ItemStack(Material.DIAMOND);
-            createGem(gem);
-
-            final Map<Integer, ItemStack> leftover = player.getInventory().addItem(gem);
-            if (leftover != null && !leftover.isEmpty()) {
-                sender.sendMessage(ChatColor.RED + "No room in inventory");
-            }
-
-            return true;
-        } else if (command.getName().equalsIgnoreCase("setflightgemrespawn") && args.length == 0) {
-            if (sender instanceof Player) {
-                Player player = (Player) sender;
-
-                for (final BlockIterator bi = new BlockIterator(player, 10); bi.hasNext(); ) {
-                    final Block b = bi.next();
-                    if (b.getState() instanceof InventoryHolder) {
-                        setRespawnBlock(b.getWorld().getName(), b.getX(), b.getY(), b.getZ());
-                        player.sendMessage(ChatColor.GREEN + "Success");
-                        return true;
-                    }
-                }
-
-                player.sendMessage(ChatColor.RED + "Failure");
-                return true;
-            } else {
-                sender.sendMessage(ChatColor.RED + "Console can't set respawn location");
-                return true;
-            }
-        } else if (command.getName().equalsIgnoreCase("findgem") && args.length == 0) {
-            if (sender instanceof Player) {
-                final Player player = (Player) sender;
-                findGemCommand(player, player);
-            } else {
-                findGemCommand(sender, null);
-            }
-            return true;
-        } else {
-            return false;
         }
     }
 
-    private void findGemCommand(final CommandSender sender, final Player player) {
+    private boolean findgemCommand(final CommandSender sender, final String[] args) {
+
+        if (args.length > 0) {
+            return false;
+        }
+
+        if (sender instanceof Player) {
+            final Player player = (Player) sender;
+            findGemSetCompass(player, player);
+        } else {
+            findGemSetCompass(sender, null);
+        }
+
+        return true;
+    }
+
+    private boolean setflightgemdispenserCommand(CommandSender sender, String[] args) {
+
+        if (args.length > 0) {
+            return false;
+        }
+
+        if (sender instanceof Player) {
+            final Player player = (Player) sender;
+
+            for (final BlockIterator bi = new BlockIterator(player, 10); bi.hasNext(); ) {
+                final Block b = bi.next();
+                if (b.getState() instanceof InventoryHolder) {
+                    setRespawnBlock(b.getWorld().getName(), b.getX(), b.getY(), b.getZ());
+                    player.sendMessage(ChatColor.GREEN + "Success");
+                    return true;
+                }
+            }
+            player.sendMessage(ChatColor.RED + "Failure");
+        } else {
+            sender.sendMessage(ChatColor.RED + "Console can't set respawn location");
+        }
+        return true;
+    }
+
+    private boolean flightgemCommand(CommandSender sender, String[] args) {
+        final Player player = selectPlayer(sender, args);
+
+        if (args.length >= 2) {
+            return false;
+        }
+
+        if (player == null) {
+            sender.sendMessage(ChatColor.RED + "Player not found");
+        } else {
+            if (player.getInventory().addItem(createGem()).isEmpty()) {
+                sender.sendMessage(ChatColor.GREEN + "Success");
+            } else {
+                sender.sendMessage(ChatColor.RED + "No room in inventory");
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * When sender is a player, return that player when no arguments are provided.
+     * When an argument is provided attempt to use that argument as the player name.
+     */
+    private Player selectPlayer(CommandSender sender, String[] args) {
+        if (sender instanceof Player && args.length == 0) {
+            return (Player) sender;
+        } else if (args.length == 1) {
+            return Bukkit.getPlayer(args[0]);
+        } else {
+            return null;
+        }
+    }
+
+    void initializeGemTarget() {
+
+        final ItemStack gem = createGem();
+        for (final Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getInventory().contains(gem)) {
+                gemTarget = player;
+                plugin.getLogger().info("Flight gem found in player inventory " + player.getName());
+                return;
+            }
+        }
+
+        final String worldName = getRespawnWorldName();
+        if (worldName == null) {
+            plugin.getLogger().info("Flight gem world unspecified");
+            return;
+        }
+
+        final World world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            plugin.getLogger().info("Flight gem world incorrect");
+            return;
+        }
+
+        for (final Item x : world.getEntitiesByClass(Item.class)) {
+            if (isFlightGem(x.getItemStack())) {
+                plugin.getLogger().info("Flight gem located on ground");
+                gemTarget = x;
+                return;
+            }
+        }
+
+        final Block block = getRespawnBlock();
+        if (block == null) {
+            plugin.getLogger().info("No dispenser found while initializing gem");
+            return;
+        }
+
+        final BlockState state = block.getState();
+        if (state == null || !(state instanceof InventoryHolder)) {
+            plugin.getLogger().info("No dispenser found at specified location while initializing gem");
+            return;
+        }
+        final InventoryHolder inventoryHolder = (InventoryHolder) state;
+        final Inventory inventory = inventoryHolder.getInventory();
+
+        if (inventory.contains(gem)) {
+            plugin.getLogger().info("Flight gem found in dispenser");
+            return;
+        }
+
+        plugin.getLogger().info("Unable to locate flight gem, generating new one");
+        inventory.addItem(gem);
+    }
+
+    private void findGemSetCompass(final CommandSender sender, final Player player) {
+
         if (gemTarget == null) {
             final Block block = getRespawnBlock();
             if (block == null) {
@@ -115,19 +196,16 @@ public class FlightGem implements Listener, CommandExecutor {
             } else {
                 final BlockState state = block.getState();
                 if (state instanceof InventoryHolder) {
-                    final InventoryHolder holder = (InventoryHolder)state;
-                    for (final ItemStack x : holder.getInventory()) {
-                        if (isFlightGem(x)) {
-                            sender.sendMessage(ChatColor.GREEN + "Your compass points to the dispenser.");
-                            if (player != null) player.setCompassTarget(block.getLocation());
-                            return;
-                        }
+                    final InventoryHolder holder = (InventoryHolder) state;
+                    final Inventory inventory = holder.getInventory();
+                    if (inventory.contains(createGem())) {
+                        sender.sendMessage(ChatColor.GREEN + "Your compass points to the dispenser.");
+                        if (player != null) player.setCompassTarget(block.getLocation());
                     }
                 }
-                sender.sendMessage(ChatColor.RED + "The gem is nowhere to be found.");
             }
         } else if (gemTarget instanceof Player) {
-            final Player holder = (Player)gemTarget;
+            final Player holder = (Player) gemTarget;
             if (player != null) player.setCompassTarget(gemTarget.getLocation());
             sender.sendMessage(ChatColor.GREEN + "Your compass points to " + ChatColor.RESET + holder.getDisplayName() + ChatColor.GREEN + ".");
         } else {
@@ -136,20 +214,32 @@ public class FlightGem implements Listener, CommandExecutor {
         }
     }
 
-    private void createGem(ItemStack itemInHand) {
-        final ItemMeta meta = itemInHand.getItemMeta();
-        if (meta == null) return;
+    /**
+     * Construct a new flight gem ItemStack
+     *
+     * @return An ItemStack which will satisfy isFlightGem()
+     */
+    private ItemStack createGem() {
+        final ItemStack itemStack = new ItemStack(Material.DIAMOND);
+        final ItemMeta meta = itemStack.getItemMeta();
         meta.setDisplayName("astro's gem");
         meta.setLore(Arrays.asList(FLIGHT));
-        itemInHand.setItemMeta(meta);
+        itemStack.setItemMeta(meta);
+        return itemStack;
     }
 
+    /**
+     * This cleans up players who had items in their inventory during
+     * shutdowns and crashes
+     *
+     * @param event
+     */
     @EventHandler
     public void onJoin(final PlayerJoinEvent event) {
         final Player player = event.getPlayer();
         if (plugin.hasBypass(player)) return;
 
-        final List<ItemStack> gems = new ArrayList<ItemStack>();
+        final Collection<ItemStack> gems = new ArrayList<>(1);
         final Inventory inventory = player.getInventory();
 
         for (final ItemStack x : inventory) {
@@ -164,29 +254,41 @@ public class FlightGem implements Listener, CommandExecutor {
         }
     }
 
+    public void restoreFlightSetting(final Player player) {
+        final String name = player.getName();
+        final Boolean old = oldAllowFlightSettings.get(name);
+        if (old != null) {
+            player.setAllowFlight(old);
+        }
+        oldAllowFlightSettings.remove(name);
+    }
+
+    public void allowFlight(final Player player) {
+        oldAllowFlightSettings.put(player.getName(), player.getAllowFlight());
+        player.setAllowFlight(true);
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onItemSwitch(final PlayerItemHeldEvent event) {
         final Player player = event.getPlayer();
         final Inventory inventory = player.getInventory();
 
-        final ItemStack heldItem = inventory.getItem(event.getNewSlot());
-        if (isFlightGem(heldItem)) {
-            player.setAllowFlight(true);
+        if (isFlightGem(inventory.getItem(event.getNewSlot()))) {
+            allowFlight(player);
             player.sendMessage(ChatColor.GREEN + "You feel as light as air!");
             return;
         }
 
         final ItemStack previousItem = inventory.getItem(event.getPreviousSlot());
         if (isFlightGem(previousItem)) {
-            player.setAllowFlight(false);
+            restoreFlightSetting(player);
             player.sendMessage(ChatColor.RED + "You feel drawn to the earth.");
         }
     }
 
     @EventHandler
     public void onQuit(final PlayerQuitEvent event) {
-        final Player player = event.getPlayer();
-        takeGemFromPlayer(player);
+        takeGemFromPlayer(event.getPlayer());
     }
 
     private void takeGemFromPlayer(Player player) {
@@ -197,11 +299,14 @@ public class FlightGem implements Listener, CommandExecutor {
                 gems.add(x);
             }
         }
+
         for (final ItemStack x : gems) {
             inventory.remove(x);
         }
+
         if (!gems.isEmpty()) {
-            respawnGem();
+            restoreFlightSetting(player);
+            spawnGem();
             plugin.getLogger().info("Flight gem removed gem from " + player.getName());
         }
     }
@@ -214,14 +319,22 @@ public class FlightGem implements Listener, CommandExecutor {
         return lore != null && !lore.isEmpty() && lore.get(0).equals(FLIGHT);
     }
 
+    private void lightning(final Location location) {
+        location.getWorld().strikeLightningEffect(location);
+    }
+
+    private void trackGem(final Entity e) {
+        gemTarget = e;
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onDestroy(final ItemDespawnEvent event) {
         final ItemStack item = event.getEntity().getItemStack();
         if (isFlightGem(item)) {
             plugin.getLogger().info("Flight gem despawned");
             final Location location = event.getEntity().getLocation();
-            location.getWorld().strikeLightning(location);
-            respawnGem();
+            location.getWorld().strikeLightningEffect(location);
+            spawnGem();
         }
     }
 
@@ -233,9 +346,8 @@ public class FlightGem implements Listener, CommandExecutor {
 
             if (isFlightGem(item.getItemStack())) {
                 plugin.getLogger().info("Flight gem burned");
-                final Location location = event.getEntity().getLocation();
-                location.getWorld().strikeLightning(location);
-                respawnGem();
+                lightning(item.getLocation());
+                spawnGem();
             }
         }
     }
@@ -244,94 +356,102 @@ public class FlightGem implements Listener, CommandExecutor {
     public void onDrop(final PlayerDropItemEvent event) {
         final Item drop = event.getItemDrop();
         if (isFlightGem(drop.getItemStack())) {
-            gemTarget = drop;
+            trackGem(drop);
             final Player player = event.getPlayer();
-            player.setAllowFlight(false);
+            restoreFlightSetting(player);
             plugin.getLogger().info("Flight gem dropped by " + player.getName() + " at " + drop.getLocation());
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onPickup(final PlayerPickupItemEvent event) {
+        // TODO: activate flight immediately if picked up into hand
         final Item drop = event.getItem();
         if (isFlightGem(drop.getItemStack())) {
             final Player player = event.getPlayer();
-            gemTarget = player;
+            trackGem(player);
             plugin.getLogger().info("Flight gem picked up by " + player.getName() + " at " + drop.getLocation());
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onKill(final PlayerDeathEvent event) {
-        // XXX: Figure out what to do here
-        for (ItemStack x : event.getDrops()) {
+        final Collection<ItemStack> gems = new ArrayList<>();
+        final Collection<ItemStack> drops = event.getDrops();
+        for (final ItemStack x : drops) {
             if (isFlightGem(x)) {
-                final Player player = event.getEntity();
-
-                player.setAllowFlight(false);
-                plugin.getLogger().info("Flight gem dropped by dead " + player.getName());
-                event.getDrops().remove(x);
-
-                final Item drop = player.getWorld().dropItemNaturally(player.getLocation(), x);
-                gemTarget = drop;
-
-                return;
+                gems.add(x);
             }
+        }
+
+        if (!gems.isEmpty()) {
+            drops.removeAll(gems);
+            final Player player = event.getEntity();
+            restoreFlightSetting(player);
+            plugin.getLogger().info("Flight gem dropped by dead " + player.getName());
+            trackGem(player.getWorld().dropItemNaturally(player.getLocation(), createGem()));
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onInvMove(final InventoryPickupItemEvent event) {
-        final Item item = event.getItem();
-        if (isFlightGem(item.getItemStack())) {
-            item.remove();
+        if (isFlightGem(event.getItem().getItemStack())) {
             plugin.getLogger().info("Prohibiting inventory pickup of flight gem");
             event.setCancelled(true);
-            respawnGem();
         }
     }
 
-    private void respawnGem() {
-        gemTarget = null;
+    /**
+     * Attempt to return the gem to its home dispenser.
+     */
+    private void spawnGem() {
+        trackGem(null);
         final Block block = getRespawnBlock();
         if (block == null) return;
         final BlockState state = block.getState();
         if (state instanceof InventoryHolder) {
             final InventoryHolder dispenser = (InventoryHolder) state;
-            final ItemStack gem = new ItemStack(Material.DIAMOND);
-            createGem(gem);
+            final ItemStack gem = createGem();
             dispenser.getInventory().addItem(gem);
-            final String msg = respawnMessage();
+            final String msg = getSpawnMessage();
             if (msg != null) {
                 Bukkit.broadcastMessage(msg);
             }
         }
     }
 
-    private String respawnMessage() {
+    private String getSpawnMessage() {
         final Object o = plugin.getConfig().get("flightgem.respawn.message");
         if (o instanceof String) {
-            final String msg = (String) o;
-            return ChatColor.translateAlternateColorCodes('&', msg);
+            return ChatColor.translateAlternateColorCodes('&', (String) o);
+        } else {
+            return null;
         }
-        return null;
+    }
+
+    private String getRespawnWorldName() {
+        final Object w = plugin.getConfig().get("flightgem.respawn.world");
+        if (w instanceof String) {
+            return (String) w;
+        } else {
+            return null;
+        }
     }
 
     private Block getRespawnBlock() {
         final FileConfiguration config = plugin.getConfig();
 
-        final Object w = config.get("flightgem.respawn.world");
+        final String w = getRespawnWorldName();
         final Object x = config.get("flightgem.respawn.x");
         final Object y = config.get("flightgem.respawn.y");
         final Object z = config.get("flightgem.respawn.z");
 
         if (w != null && x != null && y != null && z != null &&
-                w instanceof String &&
                 x instanceof Integer &&
                 y instanceof Integer &&
                 z instanceof Integer) {
 
-            final World world = Bukkit.getWorld((String) w);
+            final World world = Bukkit.getWorld(w);
 
             if (world == null) return null;
 
@@ -357,19 +477,21 @@ public class FlightGem implements Listener, CommandExecutor {
             final Player player = (Player) human;
 
             if (!isFlightGem(event.getCurrentItem()) && !isFlightGem(event.getCursor())) return;
-            if (plugin.hasBypass(player)) return;
 
-            player.setAllowFlight(false);
+            if (isFlightGem(event.getCurrentItem())) {
+                restoreFlightSetting(player);
+            }
+
+            if (plugin.hasBypass(player)) return;
 
             final InventoryType invType = event.getInventory().getType();
             final InventoryType.SlotType slotType = event.getSlotType();
 
             if (invType == InventoryType.CRAFTING && slotType == InventoryType.SlotType.CONTAINER ||
-                invType == InventoryType.CRAFTING && slotType == InventoryType.SlotType.QUICKBAR) {
+                    invType == InventoryType.CRAFTING && slotType == InventoryType.SlotType.QUICKBAR) {
                 return;
             }
 
-            player.sendMessage(ChatColor.RED + "It would be tragic to lock this gem away.");
             plugin.getLogger().info("Canceling flight gem inventory click " + invType + ":" + slotType + " for " + player.getName());
             event.setCancelled(true);
         }
@@ -379,7 +501,7 @@ public class FlightGem implements Listener, CommandExecutor {
     public void onIventoryDrag(final InventoryDragEvent event) {
         final HumanEntity human = event.getWhoClicked();
         if (human instanceof Player) {
-            final Player player = (Player)human;
+            final Player player = (Player) human;
 
             if (!isFlightGem(event.getOldCursor())) return;
 
@@ -402,9 +524,9 @@ public class FlightGem implements Listener, CommandExecutor {
 
                 if (plugin.hasBypass(player)) return;
 
-                player.setAllowFlight(false);
+                restoreFlightSetting(player);
                 player.setItemInHand(null);
-                gemTarget = player.getWorld().dropItemNaturally(player.getLocation(), gem);
+                trackGem(player.getWorld().dropItemNaturally(player.getLocation(), gem));
                 player.sendMessage(ChatColor.RED + "The gem slips from your fingers!");
                 plugin.getLogger().info("Flight gem slipped from " + player.getName());
             }
@@ -412,9 +534,9 @@ public class FlightGem implements Listener, CommandExecutor {
     }
 
     @EventHandler(ignoreCancelled = true)
-    public void onTeleport(final PlayerTeleportEvent event) {
-        if (event.getTo().getWorld().getName().equals("Snaketopia")) return;
+    public void onWorldChange(final PlayerChangedWorldEvent event) {
         final Player player = event.getPlayer();
+        if (player.getWorld().getName().equalsIgnoreCase(getRespawnWorldName())) return;
         if (plugin.hasBypass(player)) return;
         takeGemFromPlayer(player);
     }
@@ -426,10 +548,9 @@ public class FlightGem implements Listener, CommandExecutor {
                 final Item item = (Item) e;
                 if (isFlightGem(item.getItemStack())) {
                     plugin.getLogger().info("Flight gem unloaded");
-                    final Location location = getRespawnBlock().getLocation();
                     item.remove();
-                    location.getWorld().strikeLightning(location);
-                    respawnGem();
+                    lightning(item.getLocation());
+                    spawnGem();
                 }
             }
         }
@@ -441,9 +562,10 @@ public class FlightGem implements Listener, CommandExecutor {
         if (target instanceof ItemFrame) {
             final Player player = event.getPlayer();
             if (plugin.hasBypass(player)) return;
-            if (!isFlightGem(player.getItemInHand())) return;
-            event.setCancelled(true);
-            plugin.getLogger().info("Prevented item frame placement by " + player.getName());
+            if (isFlightGem(player.getItemInHand())) {
+                event.setCancelled(true);
+                plugin.getLogger().info("Prevented item frame placement by " + player.getName());
+            }
         }
     }
 }
