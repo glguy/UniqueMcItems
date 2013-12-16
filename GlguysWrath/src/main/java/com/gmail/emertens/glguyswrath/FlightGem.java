@@ -164,19 +164,11 @@ public class FlightGem implements Listener, CommandExecutor {
             }
         }
 
-        final Block block = getRespawnBlock();
-        if (block == null) {
+        final Inventory inventory = getSpawnDispenserInventory();
+        if (inventory == null) {
             plugin.getLogger().info("No dispenser found while initializing gem");
             return;
         }
-
-        final BlockState state = block.getState();
-        if (state == null || !(state instanceof InventoryHolder)) {
-            plugin.getLogger().info("No dispenser found at specified location while initializing gem");
-            return;
-        }
-        final InventoryHolder inventoryHolder = (InventoryHolder) state;
-        final Inventory inventory = inventoryHolder.getInventory();
 
         if (inventory.contains(gem)) {
             plugin.getLogger().info("Flight gem found in dispenser");
@@ -190,19 +182,12 @@ public class FlightGem implements Listener, CommandExecutor {
     private void findGemSetCompass(final CommandSender sender, final Player player) {
 
         if (gemTarget == null) {
-            final Block block = getRespawnBlock();
-            if (block == null) {
-                sender.sendMessage(ChatColor.RED + "The gem is nowhere to be found.");
+            final Inventory inventory = getSpawnDispenserInventory();
+            if (inventory != null && inventory.contains(createGem())) {
+                sender.sendMessage(ChatColor.GREEN + "Your compass points to the dispenser.");
+                if (player != null) player.setCompassTarget(getRespawnBlock().getLocation());
             } else {
-                final BlockState state = block.getState();
-                if (state instanceof InventoryHolder) {
-                    final InventoryHolder holder = (InventoryHolder) state;
-                    final Inventory inventory = holder.getInventory();
-                    if (inventory.contains(createGem())) {
-                        sender.sendMessage(ChatColor.GREEN + "Your compass points to the dispenser.");
-                        if (player != null) player.setCompassTarget(block.getLocation());
-                    }
-                }
+                sender.sendMessage(ChatColor.RED + "The gem is nowhere to be found.");
             }
         } else if (gemTarget instanceof Player) {
             final Player holder = (Player) gemTarget;
@@ -232,7 +217,7 @@ public class FlightGem implements Listener, CommandExecutor {
      * This cleans up players who had items in their inventory during
      * shutdowns and crashes
      *
-     * @param event
+     * @param event Join event
      */
     @EventHandler
     public void onJoin(final PlayerJoinEvent event) {
@@ -293,7 +278,7 @@ public class FlightGem implements Listener, CommandExecutor {
 
     private void takeGemFromPlayer(Player player) {
         final Inventory inventory = player.getInventory();
-        final List<ItemStack> gems = new ArrayList<ItemStack>();
+        final Collection<ItemStack> gems = new ArrayList<>();
         for (final ItemStack x : inventory) {
             if (isFlightGem(x)) {
                 gems.add(x);
@@ -401,18 +386,25 @@ public class FlightGem implements Listener, CommandExecutor {
         }
     }
 
+    private Inventory getSpawnDispenserInventory() {
+        final Block block = getRespawnBlock();
+        if (block == null) return null;
+        final BlockState state = block.getState();
+        if (state instanceof InventoryHolder) {
+            final InventoryHolder dispenser = (InventoryHolder) state;
+            return dispenser.getInventory();
+        } else {
+            return null;
+        }
+    }
     /**
      * Attempt to return the gem to its home dispenser.
      */
     private void spawnGem() {
         trackGem(null);
-        final Block block = getRespawnBlock();
-        if (block == null) return;
-        final BlockState state = block.getState();
-        if (state instanceof InventoryHolder) {
-            final InventoryHolder dispenser = (InventoryHolder) state;
-            final ItemStack gem = createGem();
-            dispenser.getInventory().addItem(gem);
+        final Inventory inventory = getSpawnDispenserInventory();
+        if (inventory != null) {
+            inventory.addItem(createGem());
             final String msg = getSpawnMessage();
             if (msg != null) {
                 Bukkit.broadcastMessage(msg);
