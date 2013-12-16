@@ -533,10 +533,18 @@ public class FlightGem implements Listener, CommandExecutor {
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler
     public void onWorldChange(final PlayerChangedWorldEvent event) {
         final Player player = event.getPlayer();
         if (player.getWorld().getName().equalsIgnoreCase(getRespawnWorldName())) return;
+        if (plugin.hasBypass(player)) return;
+        takeGemFromPlayer(player);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onTeleport(final PlayerTeleportEvent event) {
+        final Player player = event.getPlayer();
+        if (event.getTo().getWorld().getName().equalsIgnoreCase(getRespawnWorldName())) return;
         if (plugin.hasBypass(player)) return;
         takeGemFromPlayer(player);
     }
