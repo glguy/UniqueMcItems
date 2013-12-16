@@ -243,6 +243,8 @@ public class FlightGem implements Listener, CommandExecutor {
         if (old != null) {
             player.setAllowFlight(old);
             player.sendMessage(ChatColor.RED + "You feel drawn to the earth.");
+            player.playSound(player.getLocation(), Sound.FIZZ, 1, 1);
+
         }
         oldAllowFlightSettings.remove(name);
     }
@@ -251,6 +253,7 @@ public class FlightGem implements Listener, CommandExecutor {
         player.sendMessage(ChatColor.GREEN + "You feel as light as air!");
         oldAllowFlightSettings.put(player.getName(), player.getAllowFlight());
         player.setAllowFlight(true);
+        player.playSound(player.getLocation(), Sound.BAT_TAKEOFF, 1, 1);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -346,7 +349,6 @@ public class FlightGem implements Listener, CommandExecutor {
 
     @EventHandler(ignoreCancelled = true)
     public void onPickup(final PlayerPickupItemEvent event) {
-        // TODO: activate flight immediately if picked up into hand
         final Item drop = event.getItem();
         if (isFlightGem(drop.getItemStack())) {
             final Player player = event.getPlayer();
@@ -380,6 +382,10 @@ public class FlightGem implements Listener, CommandExecutor {
         }
     }
 
+    /**
+     * Prevent hoppers from picking up the flight gem.
+     * @param event Pickup event for hoppers
+     */
     @EventHandler(ignoreCancelled = true)
     public void onInvMove(final InventoryPickupItemEvent event) {
         if (isFlightGem(event.getItem().getItemStack())) {
@@ -527,10 +533,10 @@ public class FlightGem implements Listener, CommandExecutor {
 
                 if (plugin.hasBypass(player)) return;
 
+                player.sendMessage(ChatColor.RED + "The gem slips from your fingers!");
                 restoreFlightSetting(player);
                 player.setItemInHand(null);
                 player.getWorld().dropItemNaturally(player.getLocation(), gem);
-                player.sendMessage(ChatColor.RED + "The gem slips from your fingers!");
                 plugin.getLogger().info("Flight gem slipped from " + player.getName());
             }
         }
