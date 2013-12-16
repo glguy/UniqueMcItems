@@ -3,16 +3,11 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.gmail.emertens</groupId>
 	<artifactId>glguyswrath</artifactId>
-	<version>0.3-SNAPSHOT</version>
+	<version>1.0-SNAPSHOT</version>
 	<build>
-		<sourceDirectory>src/main/java</sourceDirectory>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-        </resources>
 		<plugins>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.1</version>
 				<configuration>
