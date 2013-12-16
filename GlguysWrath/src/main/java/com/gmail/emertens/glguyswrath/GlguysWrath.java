@@ -26,6 +26,4 @@ public class GlguysWrath extends JavaPlugin {
         this.getCommand("setflightgemrespawn").setExecutor(flightGem);
         this.getCommand("findgem").setExecutor(flightGem);
 	}
-
-
 }

@@ -29,6 +29,7 @@ import org.bukkit.util.BlockIterator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by Eric Mertens on 12/11/13.
@@ -50,13 +51,29 @@ public class FlightGem implements Listener, CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
-        if (command.getName().equalsIgnoreCase("flightgem") && args.length == 0) {
-            if (sender instanceof Player) {
-                Player player = (Player) sender;
-                createGem(player.getItemInHand());
+        if (command.getName().equalsIgnoreCase("flightgem")) {
+
+            final Player player;
+            if (sender instanceof Player && args.length == 0) {
+                player = (Player) sender;
+            } else if (args.length == 1) {
+                player = Bukkit.getPlayer(args[0]);
+                if (player == null) {
+                    sender.sendMessage(ChatColor.RED + "Player not found");
+                    return true;
+                }
             } else {
-                sender.sendMessage(CONSOLE_CREATE_MSG);
+                return false;
             }
+
+            final ItemStack gem = new ItemStack(Material.DIAMOND);
+            createGem(gem);
+
+            final Map<Integer, ItemStack> leftover = player.getInventory().addItem(gem);
+            if (leftover != null && !leftover.isEmpty()) {
+                sender.sendMessage(ChatColor.RED + "No room in inventory");
+            }
+
             return true;
         } else if (command.getName().equalsIgnoreCase("setflightgemrespawn") && args.length == 0) {
             if (sender instanceof Player) {
@@ -80,9 +97,9 @@ public class FlightGem implements Listener, CommandExecutor {
         } else if (command.getName().equalsIgnoreCase("findgem") && args.length == 0) {
             if (sender instanceof Player) {
                 final Player player = (Player) sender;
-                findGemCommand(player);
+                findGemCommand(player, player);
             } else {
-                sender.sendMessage("Find gem isn't for the console");
+                findGemCommand(sender, null);
             }
             return true;
         } else {
@@ -90,32 +107,32 @@ public class FlightGem implements Listener, CommandExecutor {
         }
     }
 
-    private void findGemCommand(final Player player) {
+    private void findGemCommand(final CommandSender sender, final Player player) {
         if (gemTarget == null) {
             final Block block = getRespawnBlock();
             if (block == null) {
-                player.sendMessage(ChatColor.RED + "The gem is nowhere to be found.");
+                sender.sendMessage(ChatColor.RED + "The gem is nowhere to be found.");
             } else {
                 final BlockState state = block.getState();
                 if (state instanceof InventoryHolder) {
                     final InventoryHolder holder = (InventoryHolder)state;
                     for (final ItemStack x : holder.getInventory()) {
                         if (isFlightGem(x)) {
-                            player.sendMessage(ChatColor.GREEN + "Your compass points to the dispenser.");
-                            player.setCompassTarget(block.getLocation());
+                            sender.sendMessage(ChatColor.GREEN + "Your compass points to the dispenser.");
+                            if (player != null) player.setCompassTarget(block.getLocation());
                             return;
                         }
                     }
                 }
-                player.sendMessage(ChatColor.RED + "The gem is nowhere to be found.");
+                sender.sendMessage(ChatColor.RED + "The gem is nowhere to be found.");
             }
         } else if (gemTarget instanceof Player) {
             final Player holder = (Player)gemTarget;
-            player.setCompassTarget(gemTarget.getLocation());
-            player.sendMessage(ChatColor.GREEN + "Your compass points to " + ChatColor.RESET + holder.getDisplayName() + ChatColor.GREEN + ".");
+            if (player != null) player.setCompassTarget(gemTarget.getLocation());
+            sender.sendMessage(ChatColor.GREEN + "Your compass points to " + ChatColor.RESET + holder.getDisplayName() + ChatColor.GREEN + ".");
         } else {
-            player.setCompassTarget(gemTarget.getLocation());
-            player.sendMessage(ChatColor.GREEN + "Your compass points to the fallen gem.");
+            if (player != null) player.setCompassTarget(gemTarget.getLocation());
+            sender.sendMessage(ChatColor.GREEN + "Your compass points to the fallen gem.");
         }
     }
 
@@ -125,6 +142,26 @@ public class FlightGem implements Listener, CommandExecutor {
         meta.setDisplayName("astro's gem");
         meta.setLore(Arrays.asList(FLIGHT));
         itemInHand.setItemMeta(meta);
+    }
+
+    @EventHandler
+    public void onJoin(final PlayerJoinEvent event) {
+        final Player player = event.getPlayer();
+        if (plugin.hasBypass(player)) return;
+
+        final List<ItemStack> gems = new ArrayList<ItemStack>();
+        final Inventory inventory = player.getInventory();
+
+        for (final ItemStack x : inventory) {
+            if (isFlightGem(x)) {
+                gems.add(x);
+            }
+        }
+
+        for (final ItemStack x : gems) {
+            inventory.remove(x);
+            plugin.getLogger().info("Removing a flight gem on join from " + player.getName());
+        }
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -230,8 +267,14 @@ public class FlightGem implements Listener, CommandExecutor {
         for (ItemStack x : event.getDrops()) {
             if (isFlightGem(x)) {
                 final Player player = event.getEntity();
+
                 player.setAllowFlight(false);
                 plugin.getLogger().info("Flight gem dropped by dead " + player.getName());
+                event.getDrops().remove(x);
+
+                final Item drop = player.getWorld().dropItemNaturally(player.getLocation(), x);
+                gemTarget = drop;
+
                 return;
             }
         }
@@ -401,7 +444,6 @@ public class FlightGem implements Listener, CommandExecutor {
             if (!isFlightGem(player.getItemInHand())) return;
             event.setCancelled(true);
             plugin.getLogger().info("Prevented item frame placement by " + player.getName());
-            takeGemFromPlayer(player);
         }
     }
 }

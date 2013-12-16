@@ -11,15 +11,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.bukkit:bukkit:1.6.4-R2.0" level="project" />
-    <orderEntry type="module-library">
-      <library name="Maven: net.ess3:Essentials:2.12.2">
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib/Essentials.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
   </component>
 </module>
 

@@ -5,10 +5,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.HumanEntity;
-import org.bukkit.entity.Item;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -291,6 +288,18 @@ public class CursedListener implements Listener, CommandExecutor {
         } else {
             player.sendMessage(ChatColor.GOLD + "I'm ready! Let's kill "
                     + nearestPlayer.getDisplayName());
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onItemFramePlace(final PlayerInteractEntityEvent event) {
+        final Entity target = event.getRightClicked();
+        if (target instanceof ItemFrame) {
+            final Player player = event.getPlayer();
+            if (plugin.hasBypass(player)) return;
+            if (!isCursed(player.getItemInHand())) return;
+            event.setCancelled(true);
+            plugin.getLogger().info("Prevented cursed item frame placement by " + player.getName());
         }
     }
 
