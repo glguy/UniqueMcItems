@@ -7,7 +7,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 @SuppressWarnings("unused")
 public class GlguysWrath extends JavaPlugin {
 
-
 	boolean hasBypass(final Player player) {
 		return player.hasPermission("glguyswrath.bypass");
 	}
@@ -21,7 +20,10 @@ public class GlguysWrath extends JavaPlugin {
         this.getCommand("curseitem").setExecutor(cursedSword);
 
         final FlightGem flightGem = new FlightGem(this);
-        flightGem.initializeGemTarget();
+        if (!flightGem.initialize()) {
+            getLogger().info("Failed to initialize flight gem");
+            this.setEnabled(false);
+        }
         Bukkit.getPluginManager().registerEvents(flightGem, this);
         this.getCommand("flightgem").setExecutor(flightGem);
         this.getCommand("setflightgemrespawn").setExecutor(flightGem);

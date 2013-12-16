@@ -1,3 +1,8 @@
 flightgem:
   respawn:
-    message: "&7&oFlight gem has returned!"
+    message: '&7&oFlight gem has returned!'
+  object:
+    name: Flight gem
+    material: DIAMOND
+    lore:
+    - Flight

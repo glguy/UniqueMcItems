@@ -82,9 +82,7 @@ public class CursedListener implements Listener, CommandExecutor {
     public void onItemDrop(final PlayerDropItemEvent event) {
         final Player player = event.getPlayer();
 
-        if (plugin.hasBypass(player)) {
-            return;
-        }
+        if (plugin.hasBypass(player)) return;
 
         if (isCursed(event.getItemDrop().getItemStack())) {
             player.sendMessage(FAILED_DROP_MSG);
@@ -240,7 +238,7 @@ public class CursedListener implements Listener, CommandExecutor {
         }
 
         final Item item = event.getItem();
-        if (FlightGem.isFlightGem(item.getItemStack())) return;
+        //if (FlightGem.isFlightGem(item.getItemStack())) return;
 
         final Player player = event.getPlayer();
         if (plugin.hasBypass(player) || !isCursedPlayer(player)) {

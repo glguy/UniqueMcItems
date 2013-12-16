@@ -38,6 +38,7 @@ public class FlightGem implements Listener, CommandExecutor {
     private GlguysWrath plugin;
     private Entity gemTarget = null;
     private Map<String, Boolean> oldAllowFlightSettings = new HashMap<>();
+    private ItemStack gemPrototype = null;
 
     public FlightGem(GlguysWrath plugin) {
         this.plugin = plugin;
@@ -107,7 +108,7 @@ public class FlightGem implements Listener, CommandExecutor {
         if (player == null) {
             sender.sendMessage(ChatColor.RED + "Player not found");
         } else {
-            if (player.getInventory().addItem(createGem()).isEmpty()) {
+            if (player.getInventory().addItem(gemPrototype).isEmpty()) {
                 sender.sendMessage(ChatColor.GREEN + "Success");
             } else {
                 sender.sendMessage(ChatColor.RED + "No room in inventory");
@@ -131,11 +132,16 @@ public class FlightGem implements Listener, CommandExecutor {
         }
     }
 
+    public boolean initialize() {
+        if (!initializePrototype()) return false;
+        initializeGemTarget();
+        return true;
+    }
+
     void initializeGemTarget() {
 
-        final ItemStack gem = createGem();
         for (final Player player : Bukkit.getOnlinePlayers()) {
-            if (player.getInventory().contains(gem)) {
+            if (player.getInventory().contains(gemPrototype)) {
                 gemTarget = player;
                 plugin.getLogger().info("Flight gem found in player inventory " + player.getName());
                 return;
@@ -168,20 +174,20 @@ public class FlightGem implements Listener, CommandExecutor {
             return;
         }
 
-        if (inventory.contains(gem)) {
+        if (inventory.contains(gemPrototype)) {
             plugin.getLogger().info("Flight gem found in dispenser");
             return;
         }
 
         plugin.getLogger().info("Unable to locate flight gem, generating new one");
-        inventory.addItem(gem);
+        inventory.addItem(gemPrototype);
     }
 
     private void findGemSetCompass(final CommandSender sender, final Player player) {
 
         if (gemTarget == null) {
             final Inventory inventory = getSpawnDispenserInventory();
-            if (inventory != null && inventory.contains(createGem())) {
+            if (inventory != null && inventory.contains(gemPrototype)) {
                 sender.sendMessage(ChatColor.GREEN + "Your compass points to the dispenser.");
                 if (player != null) player.setCompassTarget(getRespawnBlock().getLocation());
             } else {
@@ -197,18 +203,35 @@ public class FlightGem implements Listener, CommandExecutor {
         }
     }
 
-    /**
-     * Construct a new flight gem ItemStack
-     *
-     * @return An ItemStack which will satisfy isFlightGem()
-     */
-    private ItemStack createGem() {
-        final ItemStack itemStack = new ItemStack(Material.DIAMOND);
-        final ItemMeta meta = itemStack.getItemMeta();
-        meta.setDisplayName("astro's gem");
-        meta.setLore(Arrays.asList(FLIGHT));
-        itemStack.setItemMeta(meta);
-        return itemStack;
+    private boolean initializePrototype() {
+        FileConfiguration config = plugin.getConfig();
+
+        try {
+            final String displayName = (String)config.get("flightgem.object.name", "Flight Gem");
+            final String materialName = (String)config.get("flightgem.object.material", "DIAMOND");
+            final List<?> loreLineObjects = (List<?>)config.get("flightgem.object.lore", Arrays.asList("Flight"));
+
+            // Java generics require us to do this in order to verify the types of the elements of the list
+            final List<String> loreLines = new ArrayList<>(loreLineObjects.size());
+            for (final Object x : loreLineObjects) {
+                loreLines.add((String)x);
+            }
+
+            final Material material = Material.getMaterial(materialName);
+            if (material == null) return false;
+
+            final ItemStack gem = new ItemStack(material);
+            final ItemMeta itemMeta = gem.getItemMeta();
+            itemMeta.setDisplayName(displayName);
+            itemMeta.setLore(loreLines);
+            gem.setItemMeta(itemMeta);
+
+            gemPrototype = gem;
+            return true;
+        } catch (ClassCastException e) {
+            return false;
+        }
+
     }
 
     /**
@@ -222,17 +245,10 @@ public class FlightGem implements Listener, CommandExecutor {
         final Player player = event.getPlayer();
         if (plugin.hasBypass(player)) return;
 
-        final Collection<ItemStack> gems = new ArrayList<>(1);
         final Inventory inventory = player.getInventory();
 
-        for (final ItemStack x : inventory) {
-            if (isFlightGem(x)) {
-                gems.add(x);
-            }
-        }
-
-        for (final ItemStack x : gems) {
-            inventory.remove(x);
+        while (inventory.contains(gemPrototype)) {
+            inventory.remove(gemPrototype);
             plugin.getLogger().info("Removing a flight gem on join from " + player.getName());
         }
     }
@@ -280,29 +296,21 @@ public class FlightGem implements Listener, CommandExecutor {
     private void takeGemFromPlayer(Player player) {
         final Inventory inventory = player.getInventory();
         final Collection<ItemStack> gems = new ArrayList<>();
-        for (final ItemStack x : inventory) {
-            if (isFlightGem(x)) {
-                gems.add(x);
-            }
+
+        boolean hadGem = inventory.contains(gemPrototype);
+        while(inventory.contains(gemPrototype)) {
+            inventory.remove(gemPrototype);
         }
 
-        for (final ItemStack x : gems) {
-            inventory.remove(x);
-        }
-
-        if (!gems.isEmpty()) {
+        if (hadGem) {
             restoreFlightSetting(player);
             spawnGem();
             plugin.getLogger().info("Flight gem removed gem from " + player.getName());
         }
     }
 
-    static boolean isFlightGem(final ItemStack heldItem) {
-        if (heldItem == null) return false;
-        final ItemMeta meta = heldItem.getItemMeta();
-        if (meta == null) return false;
-        final List<String> lore = meta.getLore();
-        return lore != null && !lore.isEmpty() && lore.get(0).equals(FLIGHT);
+    boolean isFlightGem(final ItemStack heldItem) {
+        return gemPrototype.isSimilar(heldItem);
     }
 
     private void lightning(final Location location) {
@@ -375,7 +383,7 @@ public class FlightGem implements Listener, CommandExecutor {
 
     @EventHandler(ignoreCancelled = true)
     public void onKill(final PlayerDeathEvent event) {
-        if (event.getDrops().contains(createGem())) {
+        if (event.getDrops().contains(gemPrototype)) {
             final Player player = event.getEntity();
             plugin.getLogger().info("Flight gem dropped by dead " + player.getName());
             restoreFlightSetting(player);
@@ -421,10 +429,11 @@ public class FlightGem implements Listener, CommandExecutor {
         trackGem(null);
         final Inventory inventory = getSpawnDispenserInventory();
         if (inventory != null) {
-            inventory.addItem(createGem());
-            final String msg = getSpawnMessage();
-            if (msg != null) {
-                Bukkit.broadcastMessage(msg);
+            if (inventory.addItem(gemPrototype).isEmpty()) {
+                final String msg = getSpawnMessage();
+                if (msg != null) {
+                    Bukkit.broadcastMessage(msg);
+                }
             }
         }
     }
@@ -528,15 +537,14 @@ public class FlightGem implements Listener, CommandExecutor {
         if (target instanceof Player) {
             final Player player = (Player) target;
 
-            final ItemStack gem = player.getItemInHand();
-            if (isFlightGem(gem)) {
+            if (isFlightGem(player.getItemInHand())) {
 
                 if (plugin.hasBypass(player)) return;
 
                 player.sendMessage(ChatColor.RED + "The gem slips from your fingers!");
                 restoreFlightSetting(player);
                 player.setItemInHand(null);
-                player.getWorld().dropItemNaturally(player.getLocation(), gem);
+                player.getWorld().dropItemNaturally(player.getLocation(), gemPrototype);
                 plugin.getLogger().info("Flight gem slipped from " + player.getName());
             }
         }
