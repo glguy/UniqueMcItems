@@ -1,13 +1,14 @@
 package com.gmail.emertens.glguyswrath;
 
 import org.bukkit.Bukkit;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 @SuppressWarnings("unused")
 public class GlguysWrath extends JavaPlugin {
 
-	boolean hasBypass(final Player player) {
+	boolean hasBypass(final HumanEntity player) {
 		return player.hasPermission("glguyswrath.bypass");
 	}
 

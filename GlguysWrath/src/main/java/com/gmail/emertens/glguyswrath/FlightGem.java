@@ -14,10 +14,7 @@ import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.world.ChunkUnloadEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.util.BlockIterator;
 
@@ -488,52 +485,65 @@ public class FlightGem implements Listener, CommandExecutor {
         plugin.saveConfig();
     }
 
-    @EventHandler(ignoreCancelled = true)
+    private boolean isBottomClick(final InventoryClickEvent event) {
+        final InventoryView iv = event.getView();
+        return event.getRawSlot() >= iv.getTopInventory().getSize();
+    }
+
+    private boolean isBottomDrag(final InventoryDragEvent event) {
+        final InventoryView iv = event.getView();
+        for (final int x : event.getRawSlots()) {
+            if (x < iv.getTopInventory().getSize()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @EventHandler
     public void onInventoryClick(final InventoryClickEvent event) {
+
         final HumanEntity human = event.getWhoClicked();
-        if (human instanceof Player) {
-            final Player player = (Player) human;
+        if (plugin.hasBypass(human)) return;
 
-            if (event.getAction() == InventoryAction.HOTBAR_SWAP &&
-                    event.getHotbarButton() == player.getInventory().getHeldItemSlot() &&
-                    isFlightGem(player.getInventory().getItem(event.getHotbarButton()))) {
-                restoreFlightSetting(player);
-            }
+        if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
+                && event.getInventory().getType() != InventoryType.CRAFTING
+                && isFlightGem(event.getCurrentItem())) {
+            plugin.getLogger().info("Blocked move to other inventory");
+            event.setCancelled(true);
+            return;
+        }
 
-            if (!isFlightGem(event.getCurrentItem()) && !isFlightGem(event.getCursor())) return;
+        final boolean isGemHotbarSwap = event.getAction() == InventoryAction.HOTBAR_SWAP && isFlightGem(human.getInventory().getItem(event.getHotbarButton()));
 
-            restoreFlightSetting(player);
+        if ((isFlightGem(event.getCurrentItem()) || isGemHotbarSwap)
+                && human instanceof Player) {
+            restoreFlightSetting((Player)human);
+        }
 
-            if (plugin.hasBypass(player)) return;
+        if (isBottomClick(event)) return;
 
-            final InventoryType invType = event.getInventory().getType();
-            final InventoryType.SlotType slotType = event.getSlotType();
+        if (event.getSlotType() == InventoryType.SlotType.OUTSIDE) return;
 
-            if (invType == InventoryType.CRAFTING &&
-                  (slotType == InventoryType.SlotType.CONTAINER ||
-                   slotType == InventoryType.SlotType.QUICKBAR ||
-                   slotType == InventoryType.SlotType.OUTSIDE )) {
-                return;
-            }
-
-            plugin.getLogger().info("Canceling flight gem inventory click " + invType + ":" + slotType + " for " + player.getName());
+        if (isFlightGem(event.getCursor()) || isGemHotbarSwap){
+            plugin.getLogger().info("Blocked top inventory operation on flight gem");
             event.setCancelled(true);
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onIventoryDrag(final InventoryDragEvent event) {
-        final HumanEntity human = event.getWhoClicked();
-        if (human instanceof Player) {
-            final Player player = (Player) human;
+        final HumanEntity player = event.getWhoClicked();
 
-            if (!isFlightGem(event.getOldCursor())) return;
+        if (!isFlightGem(event.getOldCursor()) ||
+            plugin.hasBypass(player) ||
+            isBottomDrag(event)) {
 
-            if (plugin.hasBypass(player)) return;
-
-            event.setCancelled(true);
-            plugin.getLogger().info("Canceling inventory drag for " + player.getName());
+            return;
         }
+
+        event.setCancelled(true);
+        plugin.getLogger().info("Canceling inventory drag for " + player.getName());
     }
 
     @EventHandler(ignoreCancelled = true)
