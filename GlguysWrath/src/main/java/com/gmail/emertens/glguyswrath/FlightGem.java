@@ -250,8 +250,8 @@ public class FlightGem implements Listener, CommandExecutor {
     public void restoreFlightSetting(final Player player) {
         final String name = player.getName();
         final Boolean old = oldAllowFlightSettings.get(name);
-        if (old != null) {
-            player.setAllowFlight(old);
+        if (old == null || !old) {
+            player.setAllowFlight(false);
             player.sendMessage(ChatColor.RED + "You feel drawn to the earth.");
             player.playSound(player.getLocation(), Sound.FIZZ, 1, 1);
 
@@ -260,13 +260,16 @@ public class FlightGem implements Listener, CommandExecutor {
     }
 
     public void allowFlight(final Player player) {
-        player.sendMessage(ChatColor.GREEN + "You feel as light as air!");
 
         if (!oldAllowFlightSettings.containsKey(player.getName())) {
             oldAllowFlightSettings.put(player.getName(), player.getAllowFlight());
         }
-        player.setAllowFlight(true);
-        player.playSound(player.getLocation(), Sound.BAT_TAKEOFF, 1, 1);
+
+        if (!player.getAllowFlight()) {
+            player.setAllowFlight(true);
+            player.playSound(player.getLocation(), Sound.BAT_TAKEOFF, 1, 1);
+            player.sendMessage(ChatColor.GREEN + "You feel as light as air!");
+        }
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -508,6 +511,8 @@ public class FlightGem implements Listener, CommandExecutor {
 
         if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
                 && event.getInventory().getType() != InventoryType.CRAFTING
+                && event.getInventory().getType() != InventoryType.WORKBENCH
+                && event.getInventory().getType() != InventoryType.BREWING
                 && isFlightGem(event.getCurrentItem())) {
             plugin.getLogger().info("Blocked move to other inventory");
             event.setCancelled(true);
