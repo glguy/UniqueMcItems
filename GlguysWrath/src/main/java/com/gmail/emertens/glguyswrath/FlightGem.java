@@ -250,7 +250,7 @@ public class FlightGem implements Listener, CommandExecutor {
     public void restoreFlightSetting(final Player player) {
         final String name = player.getName();
         final Boolean old = oldAllowFlightSettings.get(name);
-        if (old == null || !old) {
+        if ((old == null || !old) && player.getAllowFlight()) {
             player.setAllowFlight(false);
             player.sendMessage(ChatColor.RED + "You feel drawn to the earth.");
             player.playSound(player.getLocation(), Sound.FIZZ, 1, 1);
