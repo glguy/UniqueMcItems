@@ -11,10 +11,7 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.*;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryDragEvent;
-import org.bukkit.event.inventory.InventoryPickupItemEvent;
-import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.inventory.Inventory;
@@ -267,7 +264,10 @@ public class FlightGem implements Listener, CommandExecutor {
 
     public void allowFlight(final Player player) {
         player.sendMessage(ChatColor.GREEN + "You feel as light as air!");
-        oldAllowFlightSettings.put(player.getName(), player.getAllowFlight());
+
+        if (!oldAllowFlightSettings.containsKey(player.getName())) {
+            oldAllowFlightSettings.put(player.getName(), player.getAllowFlight());
+        }
         player.setAllowFlight(true);
         player.playSound(player.getLocation(), Sound.BAT_TAKEOFF, 1, 1);
     }
@@ -494,19 +494,25 @@ public class FlightGem implements Listener, CommandExecutor {
         if (human instanceof Player) {
             final Player player = (Player) human;
 
-            if (!isFlightGem(event.getCurrentItem()) && !isFlightGem(event.getCursor())) return;
-
-            if (isFlightGem(event.getCurrentItem())) {
+            if (event.getAction() == InventoryAction.HOTBAR_SWAP &&
+                    event.getHotbarButton() == player.getInventory().getHeldItemSlot() &&
+                    isFlightGem(player.getInventory().getItem(event.getHotbarButton()))) {
                 restoreFlightSetting(player);
             }
+
+            if (!isFlightGem(event.getCurrentItem()) && !isFlightGem(event.getCursor())) return;
+
+            restoreFlightSetting(player);
 
             if (plugin.hasBypass(player)) return;
 
             final InventoryType invType = event.getInventory().getType();
             final InventoryType.SlotType slotType = event.getSlotType();
 
-            if (invType == InventoryType.CRAFTING && slotType == InventoryType.SlotType.CONTAINER ||
-                    invType == InventoryType.CRAFTING && slotType == InventoryType.SlotType.QUICKBAR) {
+            if (invType == InventoryType.CRAFTING &&
+                  (slotType == InventoryType.SlotType.CONTAINER ||
+                   slotType == InventoryType.SlotType.QUICKBAR ||
+                   slotType == InventoryType.SlotType.OUTSIDE )) {
                 return;
             }
 
