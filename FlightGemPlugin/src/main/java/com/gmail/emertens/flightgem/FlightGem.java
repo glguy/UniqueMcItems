@@ -211,7 +211,15 @@ class FlightGem implements Listener {
                 action == InventoryAction.HOTBAR_SWAP
                 && plugin.isFlightGem(human.getInventory().getItem(event.getHotbarButton()));
 
-        if (currentIsGem || isGemHotBarSwap) {
+        // Ignore no-op swap
+        if (InventoryType.SlotType.QUICKBAR.equals(event.getSlotType())
+                && InventoryAction.HOTBAR_SWAP.equals(action)
+                && event.getHotbarButton() == event.getSlot()
+                ) {
+            return;
+        }
+
+        if (currentIsGem || (isGemHotBarSwap && player.getInventory().getHeldItemSlot() == event.getHotbarButton())) {
             plugin.restoreFlightSetting(player);
         }
 
@@ -226,7 +234,12 @@ class FlightGem implements Listener {
                 ||
                 currentIsGem
                 && InventoryAction.HOTBAR_SWAP.equals(action)
-                && event.getHotbarButton() == player.getInventory().getHeldItemSlot()) {
+                && event.getHotbarButton() == player.getInventory().getHeldItemSlot()
+                ||
+                isGemHotBarSwap
+                && InventoryType.SlotType.QUICKBAR.equals(event.getSlotType())
+                && event.getSlot() == player.getInventory().getHeldItemSlot()
+                ) {
             plugin.allowFlight(player);
             return;
         }
