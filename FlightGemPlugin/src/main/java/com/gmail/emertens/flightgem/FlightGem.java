@@ -11,6 +11,7 @@ import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
@@ -181,14 +182,15 @@ class FlightGem implements Listener {
     void onInventoryClick(final InventoryClickEvent event) {
 
         final HumanEntity human = event.getWhoClicked();
+        if (!(human instanceof Player)) return;
         if (plugin.hasBypass(human)) return;
+        final Player player = (Player) human;
 
         final InventoryAction action = event.getAction();
         final boolean currentIsGem = plugin.isFlightGem(event.getCurrentItem());
         final Inventory inventory = event.getInventory();
         final InventoryType inventoryType = inventory.getType();
         final boolean bottomClick = isBottomClick(event);
-event.setCursor(null);
         if (currentIsGem
                 && bottomClick
                 && action == InventoryAction.MOVE_TO_OTHER_INVENTORY
@@ -205,16 +207,30 @@ event.setCursor(null);
                 && plugin.isFlightGem(human.getInventory().getItem(event.getHotbarButton()));
 
         if (currentIsGem || isGemHotBarSwap) {
-            if (human instanceof Player) {
-                plugin.restoreFlightSetting((Player) human);
-            }
+            plugin.restoreFlightSetting(player);
+        }
+
+        final boolean cursorIsGem = plugin.isFlightGem(event.getCursor());
+
+        if (cursorIsGem
+                && InventoryType.SlotType.QUICKBAR.equals(event.getSlotType())
+                && event.getSlot() == player.getInventory().getHeldItemSlot()
+                && (InventoryAction.PLACE_ALL.equals(action) ||
+                    InventoryAction.PLACE_ONE.equals(action) ||
+                    InventoryAction.SWAP_WITH_CURSOR.equals(action))
+                ||
+                currentIsGem
+                && InventoryAction.HOTBAR_SWAP.equals(action)
+                && event.getHotbarButton() == player.getInventory().getHeldItemSlot()) {
+            plugin.allowFlight(player);
+            return;
         }
 
         if (bottomClick || event.getSlotType() == InventoryType.SlotType.OUTSIDE) {
             return;
         }
 
-        final boolean cursorIsGem = plugin.isFlightGem(event.getCursor());
+
         if (isGemHotBarSwap || cursorIsGem) {
             plugin.info("Inventory click by " + human.getName(), human.getLocation());
             event.setCancelled(true);
