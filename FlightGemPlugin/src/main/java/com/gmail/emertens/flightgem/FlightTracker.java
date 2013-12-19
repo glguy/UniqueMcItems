@@ -8,10 +8,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by emertens on 12/18/13.
+ * Copyright 2013 Eric Mertens
+ *
+ * This class implements all the event handlers needed for flight gem
+ * behavior and safety.
  */
-class FlightTracker {
-    private Map<String, Boolean> oldAllowFlightSettings = new HashMap<>();
+final class FlightTracker {
+
+    private final Map<String, Boolean> oldAllowFlightSettings = new HashMap<>();
 
     void restoreFlightSetting(final Player player) {
         final String name = player.getName();

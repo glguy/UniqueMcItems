@@ -11,7 +11,6 @@ import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
@@ -21,7 +20,7 @@ import org.bukkit.inventory.PlayerInventory;
  * This class provides the functionality of a gem that grants flight
  * when held, but which can not be horded.
  */
-class FlightGem implements Listener {
+final class FlightGem implements Listener {
 
     private FlightGemPlugin plugin;
 
@@ -116,7 +115,7 @@ class FlightGem implements Listener {
         }
     }
 
-    private boolean playerWillPickupIntoHand(final Player player) {
+    private static boolean playerWillPickupIntoHand(final Player player) {
         final PlayerInventory inventory = player.getInventory();
 
         if (player.getItemInHand().getType() != Material.AIR) {
@@ -164,18 +163,23 @@ class FlightGem implements Listener {
         }
     }
 
-    private boolean isBottomClick(final InventoryClickEvent event) {
+    private static boolean isBottomClick(final InventoryClickEvent event) {
         return event.getRawSlot() >= event.getView().getTopInventory().getSize();
     }
 
-    private boolean isBottomDrag(final InventoryDragEvent event) {
+    /**
+     * Bad drags slip out of the player's inventory and quickbar
+     * @param event Drag event
+     * @return true if the drag leaves the players inventory
+     */
+    private static boolean isBadDrag(final InventoryDragEvent event) {
         final int topSize = event.getView().getTopInventory().getSize();
         for (final int x : event.getRawSlots()) {
             if (x < topSize) {
-                return false;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -264,7 +268,7 @@ class FlightGem implements Listener {
 
         if (plugin.isFlightGem(event.getOldCursor()) &&
             !plugin.hasBypass(player) &&
-            !isBottomDrag(event)) {
+            isBadDrag(event)) {
 
             plugin.info("Inventory drag by " + player.getName(), player.getLocation());
             event.setCancelled(true);

@@ -19,14 +19,23 @@ import org.bukkit.util.BlockIterator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 
-public class FlightGemPlugin extends JavaPlugin {
+public final class FlightGemPlugin extends JavaPlugin {
 
+    private static final String FAILED_TO_INITIALIZE_FLIGHT_GEM = "Failed to initialize flight gem";
+    private static final String COMPASS_FALLEN_GEM = ChatColor.GREEN + "Your compass points to the fallen gem.";
+    private static final String COMPASS_DISPENSER_GEM = ChatColor.GREEN + "Your compass points to the dispenser.";
+    private static final String COMPASS_NO_GEM = ChatColor.RED + "The gem is nowhere to be found.";
+    private static final String COMPASS_PLAYER_FORMAT = ChatColor.GREEN + "Your compass points to " + ChatColor.RESET + "%1$S" + ChatColor.GREEN + ".";
+    private static final String BYPASS_PERMISSION = "flightgem.bypass";
+
+    private final FlightTracker flightTracker = new FlightTracker();
     private Entity gemTarget = null;
-    private FlightTracker flightTracker = new FlightTracker();
     private ItemStack gemPrototype = null;
+    private Block dispenserBlock = null;
+
+
 
     void allowFlight(final Player player) {
         flightTracker.allowFlight(player);
@@ -41,23 +50,20 @@ public class FlightGemPlugin extends JavaPlugin {
     }
 
     boolean isEnabledWorld(final World world) {
-        return world.getName().equalsIgnoreCase(getRespawnWorldName());
+        return world.equals(getDispenserWorld());
     }
 
     boolean hasBypass(final HumanEntity player) {
-        return player.hasPermission("flightgem.bypass");
+        return player.hasPermission(BYPASS_PERMISSION);
     }
 
     void info(final String message, final Location location) {
-        if (location == null)
-            getLogger().info(message);
-        else
-            getLogger().info(message
-                    + " @ " + location.getWorld().getName()
-                    + " " + location.getBlockX()
-                    + ", " + location.getBlockY()
-                    + ", " + location.getBlockZ()
-            );
+        getLogger().info(message
+                + " @ " + location.getWorld().getName()
+                + " " + location.getBlockX()
+                + ", " + location.getBlockY()
+                + ", " + location.getBlockZ()
+        );
     }
 
     @Override
@@ -67,7 +73,7 @@ public class FlightGemPlugin extends JavaPlugin {
         if (initialize()) {
             Bukkit.getPluginManager().registerEvents(new FlightGem(this), this);
         } else {
-            getLogger().info("Failed to initialize flight gem");
+            getLogger().info(FAILED_TO_INITIALIZE_FLIGHT_GEM);
             setEnabled(false);
         }
     }
@@ -76,23 +82,23 @@ public class FlightGemPlugin extends JavaPlugin {
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
         switch (command.getName()) {
             case "flightgem":
-                return flightgemCommand(sender, args);
+                return createGemCommand(sender, args);
             case "setflightgemrespawn":
-                return setflightgemdispenserCommand(sender, args);
+                return setFlightGemDispenserCommand(sender, args);
             case "findgem":
-                return findgemCommand(sender, args);
+                return findGemCommand(sender, args);
             default:
                 return false;
         }
     }
 
-
-    private boolean flightgemCommand(CommandSender sender, String[] args) {
-        final Player player = selectPlayer(sender, args);
+    private boolean createGemCommand(final CommandSender sender, final String[] args) {
 
         if (args.length >= 2) {
             return false;
         }
+
+        final Player player = selectPlayer(sender, args);
 
         if (player == null) {
             sender.sendMessage(ChatColor.RED + "Player not found");
@@ -112,7 +118,7 @@ public class FlightGemPlugin extends JavaPlugin {
      * When sender is a player, return that player when no arguments are provided.
      * When an argument is provided attempt to use that argument as the player name.
      */
-    private Player selectPlayer(CommandSender sender, String[] args) {
+    private Player selectPlayer(final CommandSender sender, final String[] args) {
         if (sender instanceof Player && args.length == 0) {
             return (Player) sender;
         } else if (args.length == 1) {
@@ -124,7 +130,10 @@ public class FlightGemPlugin extends JavaPlugin {
 
 
     public boolean initialize() {
-        if (!initializePrototype()) return false;
+        dispenserBlock = getDispenserBlock();
+        if (!initializePrototype()) {
+            return false;
+        }
         initializeGemTarget();
         return true;
     }
@@ -133,49 +142,38 @@ public class FlightGemPlugin extends JavaPlugin {
 
         for (final Player player : Bukkit.getOnlinePlayers()) {
             if (player.getInventory().contains(gemPrototype)) {
-                gemTarget = player;
-                getLogger().info("Flight gem found in player inventory " + player.getName());
+                trackGem(player);
+                info("Initial player is " + player.getName(), player.getLocation());
                 return;
             }
         }
 
-        final String worldName = getRespawnWorldName();
-        if (worldName == null) {
-            getLogger().info("Flight gem world unspecified");
-            return;
-        }
-
-        final World world = Bukkit.getWorld(worldName);
+        final World world = getDispenserWorld();
         if (world == null) {
-            getLogger().info("Flight gem world incorrect");
             return;
         }
 
         for (final Item x : world.getEntitiesByClass(Item.class)) {
             if (isFlightGem(x.getItemStack())) {
-                getLogger().info("Flight gem located on ground");
-                gemTarget = x;
+                info("Gem on ground", x.getLocation());
+                trackGem(x);
                 return;
             }
         }
 
-        final Inventory inventory = getSpawnDispenserInventory();
-        if (inventory == null) {
-            getLogger().info("No dispenser found while initializing gem");
-            return;
-        }
+        resetDispenser();
+    }
 
-        if (inventory.contains(gemPrototype)) {
-            getLogger().info("Flight gem found in dispenser");
-            return;
+    private void resetDispenser() {
+        final Inventory inventory = getDispenserInventory();
+        if (inventory != null) {
+            info("Dispenser reset", dispenserBlock.getLocation());
+            inventory.setContents(new ItemStack[]{gemPrototype});
         }
-
-        getLogger().info("Unable to locate flight gem, generating new one");
-        inventory.addItem(gemPrototype);
     }
 
 
-    private boolean findgemCommand(final CommandSender sender, final String[] args) {
+    private boolean findGemCommand(final CommandSender sender, final String[] args) {
 
         if (args.length > 0) {
             return false;
@@ -191,47 +189,67 @@ public class FlightGemPlugin extends JavaPlugin {
         return true;
     }
 
-    private boolean setflightgemdispenserCommand(CommandSender sender, String[] args) {
+    private boolean setFlightGemDispenserCommand(final CommandSender sender, final String[] args) {
 
         if (args.length > 0) {
             return false;
         }
 
-        if (sender instanceof Player) {
+        if (sender instanceof Player && args.length == 0) {
             final Player player = (Player) sender;
 
-            for (final BlockIterator bi = new BlockIterator(player, 10); bi.hasNext(); ) {
+            final BlockIterator bi = new BlockIterator(player, 10);
+            while (bi.hasNext()) {
                 final Block b = bi.next();
                 if (b.getState() instanceof InventoryHolder) {
-                    setRespawnBlock(b.getWorld().getName(), b.getX(), b.getY(), b.getZ());
+                    setDispenserBlock(b.getWorld().getName(), b.getX(), b.getY(), b.getZ());
                     player.sendMessage(ChatColor.GREEN + "Success");
                     return true;
                 }
             }
             player.sendMessage(ChatColor.RED + "Failure");
+            return true;
+        } else if (args.length == 4) {
+            try {
+                final World w = Bukkit.getWorld(args[0]);
+                final int x = Integer.parseInt(args[1]);
+                final int y = Integer.parseInt(args[2]);
+                final int z = Integer.parseInt(args[3]);
+
+                if (w == null) {
+                    sender.sendMessage(ChatColor.RED + "No such world");
+                } else {
+                    setDispenserBlock(w.getName(), x, y, z);
+                    sender.sendMessage(ChatColor.GREEN + "Success");
+                }
+                return true;
+            } catch (NumberFormatException e) {
+                return false;
+            }
         } else {
-            sender.sendMessage(ChatColor.RED + "Console can't set respawn location");
+            return false;
         }
-        return true;
     }
 
     private void findGemSetCompass(final CommandSender sender, final Player player) {
 
         if (gemTarget == null) {
-            final Inventory inventory = getSpawnDispenserInventory();
+            final Inventory inventory = getDispenserInventory();
             if (inventory != null && inventory.contains(gemPrototype)) {
-                sender.sendMessage(ChatColor.GREEN + "Your compass points to the dispenser.");
-                if (player != null) player.setCompassTarget(getRespawnBlock().getLocation());
+                sender.sendMessage(COMPASS_DISPENSER_GEM);
+                if (player != null) player.setCompassTarget(dispenserBlock.getLocation());
             } else {
-                sender.sendMessage(ChatColor.RED + "The gem is nowhere to be found.");
+                sender.sendMessage(COMPASS_NO_GEM);
             }
-        } else if (gemTarget instanceof Player) {
-            final Player holder = (Player) gemTarget;
-            if (player != null) player.setCompassTarget(gemTarget.getLocation());
-            sender.sendMessage(ChatColor.GREEN + "Your compass points to " + ChatColor.RESET + holder.getDisplayName() + ChatColor.GREEN + ".");
         } else {
             if (player != null) player.setCompassTarget(gemTarget.getLocation());
-            sender.sendMessage(ChatColor.GREEN + "Your compass points to the fallen gem.");
+
+            if (gemTarget instanceof Player) {
+                final Player holder = (Player) gemTarget;
+                sender.sendMessage(String.format(COMPASS_PLAYER_FORMAT, holder.getDisplayName()));
+            } else {
+                sender.sendMessage(COMPASS_FALLEN_GEM);
+            }
         }
     }
 
@@ -279,7 +297,7 @@ public class FlightGemPlugin extends JavaPlugin {
         if (hadGem) {
             restoreFlightSetting(player);
             spawnGem();
-            getLogger().info("Flight gem removed gem from " + player.getName());
+            info("Gem removed from " + player.getName(), player.getLocation());
         }
     }
 
@@ -295,7 +313,7 @@ public class FlightGemPlugin extends JavaPlugin {
         return entity instanceof Item && isFlightGem((Item)entity);
     }
 
-    void lightning(final Location location) {
+    static void lightning(final Location location) {
         location.getWorld().strikeLightningEffect(location);
     }
 
@@ -308,21 +326,15 @@ public class FlightGemPlugin extends JavaPlugin {
      */
     void spawnGem() {
         trackGem(null);
-        final Inventory inventory = getSpawnDispenserInventory();
-        if (inventory != null) {
-            if (inventory.addItem(gemPrototype).isEmpty()) {
-                final String msg = getSpawnMessage();
-                if (msg != null) {
-                    Bukkit.broadcastMessage(msg);
-                }
-            }
+        resetDispenser();
+        final String msg = getSpawnMessage();
+        if (msg != null) {
+            Bukkit.broadcastMessage(msg);
         }
     }
 
-    private Inventory getSpawnDispenserInventory() {
-        final Block block = getRespawnBlock();
-        if (block == null) return null;
-        final BlockState state = block.getState();
+    private Inventory getDispenserInventory() {
+        final BlockState state = dispenserBlock.getState();
         if (state instanceof InventoryHolder) {
             final InventoryHolder dispenser = (InventoryHolder) state;
             return dispenser.getInventory();
@@ -341,31 +353,27 @@ public class FlightGemPlugin extends JavaPlugin {
         }
     }
 
-    String getRespawnWorldName() {
+    World getDispenserWorld() {
         final Object w = getConfig().get("flightgem.respawn.world");
         if (w instanceof String) {
-            return (String) w;
+            return Bukkit.getWorld((String) w);
         } else {
             return null;
         }
     }
 
-    private Block getRespawnBlock() {
+    private Block getDispenserBlock() {
         final FileConfiguration config = getConfig();
 
-        final String w = getRespawnWorldName();
+        final World world = getDispenserWorld();
         final Object x = config.get("flightgem.respawn.x");
         final Object y = config.get("flightgem.respawn.y");
         final Object z = config.get("flightgem.respawn.z");
 
-        if (w != null && x != null && y != null && z != null &&
+        if (world != null && x != null && y != null && z != null &&
                 x instanceof Integer &&
                 y instanceof Integer &&
                 z instanceof Integer) {
-
-            final World world = Bukkit.getWorld(w);
-
-            if (world == null) return null;
 
             return world.getBlockAt((Integer) x, (Integer) y, (Integer) z);
         }
@@ -373,8 +381,10 @@ public class FlightGemPlugin extends JavaPlugin {
         return null;
     }
 
+    private void setDispenserBlock(String world, int x, int y, int z) {
 
-    private void setRespawnBlock(String world, int x, int y, int z) {
+        dispenserBlock = Bukkit.getWorld(world).getBlockAt(x, y, z);
+
         final FileConfiguration config = getConfig();
         config.set("flightgem.respawn.world", world);
         config.set("flightgem.respawn.x", x);
