@@ -183,7 +183,7 @@ class FlightGem implements Listener {
 
         final HumanEntity human = event.getWhoClicked();
         if (!(human instanceof Player)) return;
-        if (plugin.hasBypass(human)) return;
+        final boolean enforce = !plugin.hasBypass(human);
         final Player player = (Player) human;
 
         final InventoryAction action = event.getAction();
@@ -197,8 +197,13 @@ class FlightGem implements Listener {
                 && inventoryType != InventoryType.CRAFTING
                 && inventoryType != InventoryType.WORKBENCH
                 && inventoryType != InventoryType.BREWING) {
-            plugin.info("Inventory move by " + human.getName(), human.getLocation());
-            event.setCancelled(true);
+
+            if (enforce) {
+                plugin.info("Inventory move by " + human.getName(), human.getLocation());
+                event.setCancelled(true);
+            } else {
+                plugin.restoreFlightSetting(player);
+            }
             return;
         }
 
@@ -230,10 +235,13 @@ class FlightGem implements Listener {
             return;
         }
 
-
         if (isGemHotBarSwap || cursorIsGem) {
-            plugin.info("Inventory click by " + human.getName(), human.getLocation());
-            event.setCancelled(true);
+            if (enforce) {
+                plugin.info("Inventory click by " + human.getName(), human.getLocation());
+                event.setCancelled(true);
+            } else {
+                plugin.restoreFlightSetting(player);
+            }
         }
     }
 
