@@ -27,7 +27,7 @@ public final class FlightGemPlugin extends JavaPlugin {
     private static final String COMPASS_FALLEN_GEM = ChatColor.GREEN + "Your compass points to the fallen gem.";
     private static final String COMPASS_DISPENSER_GEM = ChatColor.GREEN + "Your compass points to the dispenser.";
     private static final String COMPASS_NO_GEM = ChatColor.RED + "The gem is nowhere to be found.";
-    private static final String COMPASS_PLAYER_FORMAT = ChatColor.GREEN + "Your compass points to " + ChatColor.RESET + "%1$S" + ChatColor.GREEN + ".";
+    private static final String COMPASS_PLAYER_FORMAT = ChatColor.GREEN + "Your compass points to " + ChatColor.RESET + "%1$s" + ChatColor.GREEN + ".";
     private static final String BYPASS_PERMISSION = "flightgem.bypass";
 
     private final FlightTracker flightTracker = new FlightTracker();
