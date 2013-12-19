@@ -19,14 +19,14 @@ permissions:
 
 commands:
   flightgem:
-     permission: glguyswrath.creategem
+     permission: flightgem.creategem
      description: Create a flight gem
      usage: /<command>
   setflightgemrespawn:
-     permission: glguyswrath.setflightrespawn
+     permission: flightgem.setflightrespawn
      description: Set the respawn block for the flight gem
      usage: /<command>
   findgem:
-     permission: glguyswrath.findgem
+     permission: flightgem.findgem
      description: Point compass at gem location
      usage: /<command>
