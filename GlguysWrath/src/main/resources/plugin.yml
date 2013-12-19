@@ -1,30 +1,23 @@
-name: GlguysWrath
-main: com.gmail.emertens.glguyswrath.GlguysWrath
+name: FlightGem
+main: com.gmail.emertens.flightgem.FlightGemPlugin
 version: 1.0
 author: glguy
 
 permissions:
-  glguyswrath.bypass:
+  flightgem.bypass:
     default: op
     description: bypass wrath restrictions
-  glguyswrath.createcurse:
-    default: op
-    description: Able to create special items
-  glguyswrath.creategem:
+  flightgem.creategem:
     default: op
     description: Able to create flight gems
-  glguyswrath.setflightrespawn:
+  flightgem.setflightrespawn:
     default: op
     description: Able to set the flight gem respawn block
-  glguyswrath.findgem:
+  flightgem.findgem:
     default: true
     description: Allow the use of /findgem
 
 commands:
-  curseitem:
-     permission: glguyswrath.createcurse
-     description: Curse the held item
-     usage: /<command>
   flightgem:
      permission: glguyswrath.creategem
      description: Create a flight gem

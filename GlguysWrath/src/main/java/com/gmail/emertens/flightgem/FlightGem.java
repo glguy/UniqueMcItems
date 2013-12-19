@@ -1,4 +1,4 @@
-package com.gmail.emertens.glguyswrath;
+package com.gmail.emertens.flightgem;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -29,12 +29,12 @@ import java.util.*;
 public class FlightGem implements Listener, CommandExecutor {
 
     public static final String FLIGHT = "Flight";
-    private GlguysWrath plugin;
+    private FlightGemPlugin plugin;
     private Entity gemTarget = null;
     private Map<String, Boolean> oldAllowFlightSettings = new HashMap<>();
     private ItemStack gemPrototype = null;
 
-    public FlightGem(GlguysWrath plugin) {
+    public FlightGem(FlightGemPlugin plugin) {
         this.plugin = plugin;
     }
 
