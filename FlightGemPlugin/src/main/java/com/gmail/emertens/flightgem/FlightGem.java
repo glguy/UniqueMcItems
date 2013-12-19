@@ -15,10 +15,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 /**
- * Created by Eric Mertens on 12/11/13.
- * <p/>
- * This class provides the functionality of a gem that grants flight
- * when held, but which can not be horded.
+ * Copyright 2013 Eric Mertens
+ *
+ * This class implements all the event handlers needed for flight gem
+ * behavior and safety.
  */
 final class FlightGem implements Listener {
 

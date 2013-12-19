@@ -10,8 +10,7 @@ import java.util.Map;
 /**
  * Copyright 2013 Eric Mertens
  *
- * This class implements all the event handlers needed for flight gem
- * behavior and safety.
+ * This class implements the tracking of granting and restoring flight settings.
  */
 final class FlightTracker {
 

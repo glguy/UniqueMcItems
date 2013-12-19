@@ -21,6 +21,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Copyright 2013 Eric Mertens
+ *
+ * This plugin implements a unique server-wide shared
+ * object which grants its holder flight.
+ */
 public final class FlightGemPlugin extends JavaPlugin {
 
     private static final String FAILED_TO_INITIALIZE_FLIGHT_GEM = "Failed to initialize flight gem";
@@ -29,6 +35,9 @@ public final class FlightGemPlugin extends JavaPlugin {
     private static final String COMPASS_NO_GEM = ChatColor.RED + "The gem is nowhere to be found.";
     private static final String COMPASS_PLAYER_FORMAT = ChatColor.GREEN + "Your compass points to " + ChatColor.RESET + "%1$s" + ChatColor.GREEN + ".";
     private static final String BYPASS_PERMISSION = "flightgem.bypass";
+    public static final String PLAYER_NOT_FOUND = ChatColor.RED + "Player not found";
+    public static final String SUCCESS = ChatColor.GREEN + "Success";
+    public static final String INVENTORY_FULL = ChatColor.RED + "No room in inventory";
 
     private final FlightTracker flightTracker = new FlightTracker();
     private Entity gemTarget = null;
@@ -58,12 +67,13 @@ public final class FlightGemPlugin extends JavaPlugin {
     }
 
     void info(final String message, final Location location) {
-        getLogger().info(message
-                + " @ " + location.getWorld().getName()
-                + " " + location.getBlockX()
-                + ", " + location.getBlockY()
-                + ", " + location.getBlockZ()
-        );
+        getLogger().info(
+                String.format("%1$s @ %2$s %3$d %4$d %5$d",
+                        message,
+                        location.getWorld().getName(),
+                        location.getBlockX(),
+                        location.getBlockY(),
+                        location.getBlockZ()));
     }
 
     @Override
@@ -99,16 +109,16 @@ public final class FlightGemPlugin extends JavaPlugin {
         }
 
         final Player player = selectPlayer(sender, args);
+        final String msg;
 
         if (player == null) {
-            sender.sendMessage(ChatColor.RED + "Player not found");
+            msg = PLAYER_NOT_FOUND;
+        } else if (player.getInventory().addItem(gemPrototype).isEmpty()) {
+            msg = SUCCESS;
         } else {
-            if (player.getInventory().addItem(gemPrototype).isEmpty()) {
-                sender.sendMessage(ChatColor.GREEN + "Success");
-            } else {
-                sender.sendMessage(ChatColor.RED + "No room in inventory");
-            }
+            msg = INVENTORY_FULL;
         }
+        sender.sendMessage(msg);
 
         return true;
     }
@@ -179,12 +189,8 @@ public final class FlightGemPlugin extends JavaPlugin {
             return false;
         }
 
-        if (sender instanceof Player) {
-            final Player player = (Player) sender;
-            findGemSetCompass(player, player);
-        } else {
-            findGemSetCompass(sender, null);
-        }
+        final Player player = sender instanceof Player ? (Player) sender : null;
+        findGemSetCompass(player, player);
 
         return true;
     }
@@ -233,24 +239,31 @@ public final class FlightGemPlugin extends JavaPlugin {
 
     private void findGemSetCompass(final CommandSender sender, final Player player) {
 
+        final String msg;
+        final Location location;
+
         if (gemTarget == null) {
             final Inventory inventory = getDispenserInventory();
             if (inventory != null && inventory.contains(gemPrototype)) {
-                sender.sendMessage(COMPASS_DISPENSER_GEM);
-                if (player != null) player.setCompassTarget(dispenserBlock.getLocation());
+                msg = COMPASS_DISPENSER_GEM;
+                location = dispenserBlock.getLocation();
             } else {
-                sender.sendMessage(COMPASS_NO_GEM);
+                msg = COMPASS_NO_GEM;
+                location = null;
             }
         } else {
-            if (player != null) player.setCompassTarget(gemTarget.getLocation());
-
+            location = gemTarget.getLocation();
             if (gemTarget instanceof Player) {
                 final Player holder = (Player) gemTarget;
-                sender.sendMessage(String.format(COMPASS_PLAYER_FORMAT, holder.getDisplayName()));
+                msg = String.format(COMPASS_PLAYER_FORMAT, holder.getDisplayName());
             } else {
-                sender.sendMessage(COMPASS_FALLEN_GEM);
+                msg = COMPASS_FALLEN_GEM;
             }
         }
+        if (player != null && location != null) {
+            player.setCompassTarget(location);
+        }
+        sender.sendMessage(msg);
     }
 
     private boolean initializePrototype() {
