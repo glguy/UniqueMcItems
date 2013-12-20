@@ -177,7 +177,9 @@ public final class FlightGemPlugin extends JavaPlugin {
         final Inventory inventory = getDispenserInventory();
         if (inventory != null) {
             info("Dispenser reset", dispenserBlock.getLocation());
-            inventory.setContents(new ItemStack[]{gemPrototype});
+            inventory.clear();
+            // Do an addItem and not setContents to get the block update
+            inventory.addItem(gemPrototype);
         }
     }
 
