@@ -42,9 +42,6 @@ public final class FlightGemPlugin extends JavaPlugin {
     private final FlightTracker flightTracker = new FlightTracker();
     private Entity gemTarget = null;
     private ItemStack gemPrototype = null;
-    private Block dispenserBlock = null;
-
-
 
     void allowFlight(final Player player) {
         flightTracker.allowFlight(player);
@@ -140,7 +137,7 @@ public final class FlightGemPlugin extends JavaPlugin {
 
 
     public boolean initialize() {
-        if (!initializeDispenserBlock() || !initializePrototype()) {
+        if (!initializePrototype()) {
             return false;
         }
         initializeGemTarget();
@@ -174,7 +171,8 @@ public final class FlightGemPlugin extends JavaPlugin {
     }
 
     private void resetDispenser() {
-        final Inventory inventory = getDispenserInventory();
+        final Block dispenserBlock = getDispenserBlock();
+        final Inventory inventory = getDispenserInventory(dispenserBlock);
         if (inventory != null) {
             info("Dispenser reset", dispenserBlock.getLocation());
             inventory.clear();
@@ -244,7 +242,8 @@ public final class FlightGemPlugin extends JavaPlugin {
         final Location location;
 
         if (gemTarget == null) {
-            final Inventory inventory = getDispenserInventory();
+            final Block dispenserBlock = getDispenserBlock();
+            final Inventory inventory = getDispenserInventory(dispenserBlock);
             if (inventory != null && inventory.contains(gemPrototype)) {
                 msg = COMPASS_DISPENSER_GEM;
                 location = dispenserBlock.getLocation();
@@ -347,7 +346,10 @@ public final class FlightGemPlugin extends JavaPlugin {
         }
     }
 
-    private Inventory getDispenserInventory() {
+    private Inventory getDispenserInventory(final Block dispenserBlock) {
+        if (dispenserBlock == null) {
+            return null;
+        }
         final BlockState state = dispenserBlock.getState();
         if (state instanceof InventoryHolder) {
             final InventoryHolder dispenser = (InventoryHolder) state;
@@ -376,7 +378,7 @@ public final class FlightGemPlugin extends JavaPlugin {
         }
     }
 
-    private boolean initializeDispenserBlock() {
+    private Block getDispenserBlock() {
         final FileConfiguration config = getConfig();
 
         final World world = getDispenserWorld();
@@ -389,14 +391,12 @@ public final class FlightGemPlugin extends JavaPlugin {
                 y instanceof Integer &&
                 z instanceof Integer) {
 
-            dispenserBlock = world.getBlockAt((Integer) x, (Integer) y, (Integer) z);
+            return world.getBlockAt((Integer) x, (Integer) y, (Integer) z);
         }
-        return dispenserBlock != null;
+        return null;
     }
 
     private void setDispenserBlock(String world, int x, int y, int z) {
-
-        dispenserBlock = Bukkit.getWorld(world).getBlockAt(x, y, z);
 
         final FileConfiguration config = getConfig();
         config.set("flightgem.respawn.world", world);

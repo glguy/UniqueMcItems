@@ -5,6 +5,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.*;
@@ -49,7 +50,7 @@ final class FlightGem implements Listener {
     }
 
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onItemSwitch(final PlayerItemHeldEvent event) {
         final Player player = event.getPlayer();
         final Inventory inventory = player.getInventory();
@@ -70,7 +71,7 @@ final class FlightGem implements Listener {
         plugin.takeGemFromPlayer(event.getPlayer());
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onDestroy(final ItemDespawnEvent event) {
         final Item item = event.getEntity();
         if (plugin.isFlightGem(item)) {
@@ -81,7 +82,7 @@ final class FlightGem implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onBurn(final EntityCombustEvent event) {
         final Entity entity = event.getEntity();
         if (plugin.isFlightGem(entity)) {
@@ -92,7 +93,7 @@ final class FlightGem implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onDrop(final PlayerDropItemEvent event) {
         if (plugin.isFlightGem(event.getItemDrop())) {
             final Player player = event.getPlayer();
@@ -101,7 +102,7 @@ final class FlightGem implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onPickup(final PlayerPickupItemEvent event) {
         final Item item = event.getItem();
         if (plugin.isFlightGem(item)) {
