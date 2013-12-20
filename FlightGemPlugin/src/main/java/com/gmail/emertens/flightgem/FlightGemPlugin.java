@@ -140,8 +140,7 @@ public final class FlightGemPlugin extends JavaPlugin {
 
 
     public boolean initialize() {
-        dispenserBlock = getDispenserBlock();
-        if (!initializePrototype()) {
+        if (!initializeDispenserBlock() || !initializePrototype()) {
             return false;
         }
         initializeGemTarget();
@@ -190,7 +189,7 @@ public final class FlightGemPlugin extends JavaPlugin {
         }
 
         final Player player = sender instanceof Player ? (Player) sender : null;
-        findGemSetCompass(player, player);
+        findGemSetCompass(sender, player);
 
         return true;
     }
@@ -375,7 +374,7 @@ public final class FlightGemPlugin extends JavaPlugin {
         }
     }
 
-    private Block getDispenserBlock() {
+    private boolean initializeDispenserBlock() {
         final FileConfiguration config = getConfig();
 
         final World world = getDispenserWorld();
@@ -388,10 +387,9 @@ public final class FlightGemPlugin extends JavaPlugin {
                 y instanceof Integer &&
                 z instanceof Integer) {
 
-            return world.getBlockAt((Integer) x, (Integer) y, (Integer) z);
+            dispenserBlock = world.getBlockAt((Integer) x, (Integer) y, (Integer) z);
         }
-
-        return null;
+        return dispenserBlock != null;
     }
 
     private void setDispenserBlock(String world, int x, int y, int z) {
