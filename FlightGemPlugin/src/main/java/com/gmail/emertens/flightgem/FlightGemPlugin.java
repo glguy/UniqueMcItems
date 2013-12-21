@@ -44,6 +44,7 @@ public final class FlightGemPlugin extends JavaPlugin {
     private ItemStack gemPrototype = null;
 
     void allowFlight(final Player player) {
+        gemTarget = player;
         flightTracker.allowFlight(player);
     }
 
