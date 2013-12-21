@@ -134,7 +134,7 @@ public final class FlightGemPlugin extends JavaPlugin {
      * When sender is a player, return that player when no arguments are provided.
      * When an argument is provided attempt to use that argument as the player name.
      */
-    private Player selectPlayer(final CommandSender sender, final String[] args) {
+    private static Player selectPlayer(final CommandSender sender, final String[] args) {
         if (sender instanceof Player && args.length == 0) {
             return (Player) sender;
         } else if (args.length == 1) {

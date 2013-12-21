@@ -43,7 +43,7 @@ final class FlightGem implements Listener {
         final Inventory inventory = player.getInventory();
         final ItemStack gem = plugin.getGem();
 
-        while (inventory.contains(gem)) {
+        while (inventory.containsAtLeast(gem,1)) {
             inventory.remove(gem);
             plugin.getLogger().info("Removing a flight gem on join from " + player.getName());
         }
@@ -311,7 +311,7 @@ final class FlightGem implements Listener {
     void onWorldChange(final PlayerChangedWorldEvent event) {
         final Player player = event.getPlayer();
         final boolean playerLeftWorld = !plugin.isEnabledWorld(player.getWorld());
-        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().contains(plugin.getGem())) {
+        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().containsAtLeast(plugin.getGem(),1)) {
             plugin.info("World change by " + player.getName(), player.getLocation());
             plugin.takeGemFromPlayer(player);
         }
@@ -321,7 +321,7 @@ final class FlightGem implements Listener {
     void onTeleport(final PlayerTeleportEvent event) {
         final Player player = event.getPlayer();
         final boolean playerLeftWorld = !plugin.isEnabledWorld(event.getTo().getWorld());
-        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().contains(plugin.getGem())) {
+        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().containsAtLeast(plugin.getGem(),1)) {
             plugin.info("Teleport by " + player.getName(), player.getLocation());
             plugin.takeGemFromPlayer(player);
         }
