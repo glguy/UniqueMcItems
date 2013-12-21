@@ -9,8 +9,11 @@ players to use.
 Behaviors
 ---------
 
-When not in use the item is returned to its dispenser. The gem may not be stored in
-containers, is lost upon logout, and may not be crafted.
+When not in use the item is returned to its dispenser. The item may not be stored in
+containers, is lost upon logout, and may not be crafted. When the item is unloaded or
+destroyed it will respawn.
+
+When a player takes damage while holding the item in his hand the item will be dropped.
 
 Commands
 --------
