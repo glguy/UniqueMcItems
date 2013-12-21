@@ -1,10 +1,13 @@
 package com.gmail.emertens.flightgem;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,6 +18,11 @@ import java.util.Map;
 final class FlightTracker {
 
     private final Map<String, Boolean> oldAllowFlightSettings = new HashMap<>();
+    private FlightGemPlugin plugin;
+
+    public FlightTracker(final FlightGemPlugin plugin) {
+        this.plugin = plugin;
+    }
 
     void restoreFlightSetting(final Player player) {
         final String name = player.getName();
@@ -40,6 +48,22 @@ final class FlightTracker {
             player.setAllowFlight(true);
             player.playSound(player.getLocation(), Sound.BAT_TAKEOFF, 1, 1);
             player.sendMessage(ChatColor.GREEN + "You feel as light as air!");
+        }
+    }
+
+    void verifyStatus() {
+        final List<Player> players = new ArrayList<>();
+        for (final String name : oldAllowFlightSettings.keySet()) {
+            final Player player = Bukkit.getPlayer(name);
+            if (player != null) {
+                if (!plugin.isFlightGem(player.getItemInHand())) {
+                    players.add(player);
+                }
+            }
+        }
+        for (final Player player : players) {
+            plugin.info("Watchdog caught " + player.getName(), player.getLocation());
+            restoreFlightSetting(player);
         }
     }
 }

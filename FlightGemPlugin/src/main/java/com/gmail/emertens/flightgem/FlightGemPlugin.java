@@ -39,7 +39,7 @@ public final class FlightGemPlugin extends JavaPlugin {
     public static final String SUCCESS = ChatColor.GREEN + "Success";
     public static final String INVENTORY_FULL = ChatColor.RED + "No room in inventory";
 
-    private final FlightTracker flightTracker = new FlightTracker();
+    private final FlightTracker flightTracker = new FlightTracker(this);
     private Entity gemTarget = null;
     private ItemStack gemPrototype = null;
 
@@ -83,6 +83,14 @@ public final class FlightGemPlugin extends JavaPlugin {
             getLogger().info(FAILED_TO_INITIALIZE_FLIGHT_GEM);
             setEnabled(false);
         }
+
+        final Runnable verifier = new Runnable() {
+            @Override
+            public void run() {
+                flightTracker.verifyStatus();
+            }
+        };
+        Bukkit.getScheduler().runTaskTimer(this, verifier, 20, 20);
     }
 
     @Override
