@@ -43,9 +43,9 @@ final class FlightGem implements Listener {
         final Inventory inventory = player.getInventory();
         final ItemStack gem = plugin.getGem();
 
-        while (inventory.containsAtLeast(gem,1)) {
-            inventory.remove(gem);
-            plugin.getLogger().info("Removing a flight gem on join from " + player.getName());
+        while (inventory.containsAtLeast(gem, 1)) {
+            inventory.removeItem(gem);
+            plugin.info("Join with gem", player);
         }
     }
 
@@ -82,7 +82,7 @@ final class FlightGem implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onBurn(final EntityCombustEvent event) {
         final Entity entity = event.getEntity();
         if (plugin.isFlightGem(entity)) {
@@ -93,30 +93,25 @@ final class FlightGem implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onDrop(final PlayerDropItemEvent event) {
         if (plugin.isFlightGem(event.getItemDrop())) {
             final Player player = event.getPlayer();
             plugin.restoreFlightSetting(player);
-            plugin.info("Drop by " + player.getName(), player.getLocation());
+            plugin.info("Drop", player);
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onPickup(final PlayerPickupItemEvent event) {
         final Item item = event.getItem();
         if (plugin.isFlightGem(item)) {
             final Player player = event.getPlayer();
+            plugin.trackGem(player);
+            plugin.info("Pickup", player);
 
-            if (event.isCancelled()) {
-                plugin.info("CANCELLED PICKUP by " + player.getName(), player.getLocation());
-            } else {
-                plugin.trackGem(player);
-                plugin.info("Pickup by " + player.getName(), player.getLocation());
-
-                if (playerWillPickupIntoHand(player)) {
-                    plugin.allowFlight(player);
-                }
+            if (playerWillPickupIntoHand(player)) {
+                plugin.allowFlight(player);
             }
         }
     }
@@ -138,11 +133,11 @@ final class FlightGem implements Listener {
         return true;
     }
 
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onDeath(final PlayerDeathEvent event) {
         if (event.getDrops().contains(plugin.getGem())) {
             final Player player = event.getEntity();
-            plugin.info("Death of " + player.getName(), player.getLocation());
+            plugin.info("Death", player);
             plugin.restoreFlightSetting(player);
         }
     }
@@ -160,7 +155,7 @@ final class FlightGem implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onItemSpawn(final ItemSpawnEvent event) {
         final Item item = event.getEntity();
         if (plugin.isFlightGem(item)) {
@@ -191,11 +186,6 @@ final class FlightGem implements Listener {
     @EventHandler(ignoreCancelled = true)
     void onInventoryClick(final InventoryClickEvent event) {
 
-
-        //plugin.info(event.getSlotType().toString()
-        // + " " + event.getSlot()
-        //+ " " + event.getAction(), event.getWhoClicked().getLocation());
-
         final HumanEntity human = event.getWhoClicked();
         if (!(human instanceof Player)) return;
         final boolean enforce = !plugin.hasBypass(human);
@@ -208,13 +198,13 @@ final class FlightGem implements Listener {
         final boolean bottomClick = isBottomClick(event);
         if (currentIsGem
                 && bottomClick
-                && action == InventoryAction.MOVE_TO_OTHER_INVENTORY
-                && inventoryType != InventoryType.CRAFTING
-                && inventoryType != InventoryType.WORKBENCH
-                && inventoryType != InventoryType.BREWING) {
+                && InventoryAction.MOVE_TO_OTHER_INVENTORY.equals(action)
+                && !InventoryType.CRAFTING.equals(inventoryType)
+                && !InventoryType.WORKBENCH.equals(inventoryType)
+                && !InventoryType.BREWING.equals(inventoryType)) {
 
             if (enforce) {
-                plugin.info("Inventory move by " + human.getName(), human.getLocation());
+                plugin.info("Inventory move", human);
                 event.setCancelled(true);
             } else {
                 plugin.restoreFlightSetting(player);
@@ -223,7 +213,8 @@ final class FlightGem implements Listener {
         }
 
         final boolean isGemHotBarSwap =
-                (action == InventoryAction.HOTBAR_SWAP || InventoryAction.HOTBAR_MOVE_AND_READD.equals(action))
+                (InventoryAction.HOTBAR_SWAP.equals(action) ||
+                 InventoryAction.HOTBAR_MOVE_AND_READD.equals(action))
                 && plugin.isFlightGem(human.getInventory().getItem(event.getHotbarButton()));
 
         // Ignore no-op swap
@@ -266,7 +257,7 @@ final class FlightGem implements Listener {
 
         if (isGemHotBarSwap || cursorIsGem) {
             if (enforce) {
-                plugin.info("Inventory click by " + human.getName(), human.getLocation());
+                plugin.info("Inventory click", human);
                 event.setCancelled(true);
             } else {
                 plugin.restoreFlightSetting(player);
@@ -282,11 +273,14 @@ final class FlightGem implements Listener {
             !plugin.hasBypass(player) &&
             isBadDrag(event)) {
 
-            plugin.info("Inventory drag by " + player.getName(), player.getLocation());
+            plugin.info("Inventory drag", player);
             event.setCancelled(true);
         }
     }
 
+    // It's handy to let this event run at NORMAL priority
+    // because WorldGuard mistakenly listens at HIGH priority
+    // and this allows disarm in non-pvp zones.
     @EventHandler(ignoreCancelled = true)
     void onHit(final EntityDamageByEntityEvent event) {
         final Entity target = event.getEntity();
@@ -301,7 +295,7 @@ final class FlightGem implements Listener {
                 player.sendMessage(ChatColor.RED + "The gem slips from your fingers!");
                 plugin.restoreFlightSetting(player);
                 player.setItemInHand(null);
-                plugin.info("Disarm of " + player.getName(), player.getLocation());
+                plugin.info("Disarmed", player);
                 player.getWorld().dropItemNaturally(player.getLocation(), plugin.getGem());
             }
         }
@@ -311,8 +305,8 @@ final class FlightGem implements Listener {
     void onWorldChange(final PlayerChangedWorldEvent event) {
         final Player player = event.getPlayer();
         final boolean playerLeftWorld = !plugin.isEnabledWorld(player.getWorld());
-        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().containsAtLeast(plugin.getGem(),1)) {
-            plugin.info("World change by " + player.getName(), player.getLocation());
+        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().containsAtLeast(plugin.getGem(), 1)) {
+            plugin.info("World change", player);
             plugin.takeGemFromPlayer(player);
         }
     }
@@ -321,8 +315,8 @@ final class FlightGem implements Listener {
     void onTeleport(final PlayerTeleportEvent event) {
         final Player player = event.getPlayer();
         final boolean playerLeftWorld = !plugin.isEnabledWorld(event.getTo().getWorld());
-        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().containsAtLeast(plugin.getGem(),1)) {
-            plugin.info("Teleport by " + player.getName(), player.getLocation());
+        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().containsAtLeast(plugin.getGem(), 1)) {
+            plugin.info("Teleport", player);
             plugin.takeGemFromPlayer(player);
         }
     }
@@ -340,13 +334,13 @@ final class FlightGem implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     void onItemFramePlace(final PlayerInteractEntityEvent event) {
         final Entity target = event.getRightClicked();
         if (target instanceof ItemFrame) {
             final Player player = event.getPlayer();
             if (plugin.isFlightGem(player.getItemInHand()) && !plugin.hasBypass(player)) {
-                plugin.info("Item frame by " + player.getName(), player.getLocation());
+                plugin.info("Item frame", player);
                 event.setCancelled(true);
             }
         }

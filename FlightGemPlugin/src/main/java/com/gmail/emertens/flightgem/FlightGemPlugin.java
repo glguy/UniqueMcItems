@@ -64,6 +64,10 @@ public final class FlightGemPlugin extends JavaPlugin {
         return player.hasPermission(BYPASS_PERMISSION);
     }
 
+    void info(final String message, final HumanEntity player) {
+        info(message + ", " + player.getName(), player.getLocation());
+    }
+
     void info(final String message, final Location location) {
         getLogger().info(
                 String.format("%1$s @ %2$s %3$d %4$d %5$d",
