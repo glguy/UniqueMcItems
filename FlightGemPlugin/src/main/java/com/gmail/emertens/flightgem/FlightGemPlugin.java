@@ -34,10 +34,26 @@ public final class FlightGemPlugin extends JavaPlugin {
     private static final String COMPASS_DISPENSER_GEM = ChatColor.GREEN + "Your compass points to the dispenser.";
     private static final String COMPASS_NO_GEM = ChatColor.RED + "The gem is nowhere to be found.";
     private static final String COMPASS_PLAYER_FORMAT = ChatColor.GREEN + "Your compass points to " + ChatColor.RESET + "%1$s" + ChatColor.GREEN + ".";
+    private static final String SUCCESS = ChatColor.GREEN + "Success";
+    private static final String ERR_INVENTORY_FULL = ChatColor.RED + "No room in inventory";
+    private static final String ERR_NO_CONTAINER_FOUND = ChatColor.RED + "No container block found";
+    private static final String ERR_WORLD_NOT_FOUND = ChatColor.RED + "No such world";
+    private static final String ERR_PLAYER_NOT_FOUND = ChatColor.RED + "Player not found";
+
     private static final String BYPASS_PERMISSION = "flightgem.bypass";
-    public static final String PLAYER_NOT_FOUND = ChatColor.RED + "Player not found";
-    public static final String SUCCESS = ChatColor.GREEN + "Success";
-    public static final String INVENTORY_FULL = ChatColor.RED + "No room in inventory";
+
+    private static final String CONFIG_RESPAWN_WORLD = "flightgem.respawn.world";
+    private static final String CONFIG_RESPAWN_X = "flightgem.respawn.x";
+    private static final String CONFIG_RESPAWN_Y = "flightgem.respawn.y";
+    private static final String CONFIG_RESPAWN_Z = "flightgem.respawn.z";
+    private static final String CONFIG_RESPAWN_MESSAGE = "flightgem.respawn.message";
+    private static final String CONFIG_OBJECT_NAME = "flightgem.object.name";
+    private static final String CONFIG_OBJECT_MATERIAL = "flightgem.object.material";
+    private static final String CONFIG_OBJECT_LORE = "flightgem.object.lore";
+
+    private static final String DEFAULT_OBJECT_NAME = "Flight Gem";
+    private static final String DEFAULT_OBJECT_MATERIAL = "DIAMOND";
+    private static final List<String> DEFAULT_OBJECT_LORE = Arrays.asList("Flight");
 
     private final FlightTracker flightTracker = new FlightTracker(this);
     private Entity gemTarget = null;
@@ -122,11 +138,11 @@ public final class FlightGemPlugin extends JavaPlugin {
         final String msg;
 
         if (player == null) {
-            msg = PLAYER_NOT_FOUND;
+            msg = ERR_PLAYER_NOT_FOUND;
         } else if (player.getInventory().addItem(gemPrototype).isEmpty()) {
             msg = SUCCESS;
         } else {
-            msg = INVENTORY_FULL;
+            msg = ERR_INVENTORY_FULL;
         }
         sender.sendMessage(msg);
 
@@ -162,7 +178,7 @@ public final class FlightGemPlugin extends JavaPlugin {
         for (final Player player : Bukkit.getOnlinePlayers()) {
             if (player.getInventory().contains(gemPrototype)) {
                 trackGem(player);
-                info("Initial player is " + player.getName(), player.getLocation());
+                info("Initial player", player);
                 return;
             }
         }
@@ -221,11 +237,11 @@ public final class FlightGemPlugin extends JavaPlugin {
                 final Block b = bi.next();
                 if (b.getState() instanceof InventoryHolder) {
                     setDispenserBlock(b.getWorld().getName(), b.getX(), b.getY(), b.getZ());
-                    player.sendMessage(ChatColor.GREEN + "Success");
+                    player.sendMessage(SUCCESS);
                     return true;
                 }
             }
-            player.sendMessage(ChatColor.RED + "Failure");
+            player.sendMessage(ERR_NO_CONTAINER_FOUND);
             return true;
         } else if (args.length == 4) {
             try {
@@ -235,10 +251,10 @@ public final class FlightGemPlugin extends JavaPlugin {
                 final int z = Integer.parseInt(args[3]);
 
                 if (w == null) {
-                    sender.sendMessage(ChatColor.RED + "No such world");
+                    sender.sendMessage(ERR_WORLD_NOT_FOUND);
                 } else {
                     setDispenserBlock(w.getName(), x, y, z);
-                    sender.sendMessage(ChatColor.GREEN + "Success");
+                    sender.sendMessage(SUCCESS);
                 }
                 return true;
             } catch (NumberFormatException e) {
@@ -288,9 +304,9 @@ public final class FlightGemPlugin extends JavaPlugin {
         final List<String> loreLines;
 
         try {
-            displayName = (String) config.get("flightgem.object.name", "Flight Gem");
-            materialName = (String) config.get("flightgem.object.material", "DIAMOND");
-            loreLineObjects = (List<?>) config.get("flightgem.object.lore", Arrays.asList("Flight"));
+            displayName = (String) config.get(CONFIG_OBJECT_NAME, DEFAULT_OBJECT_NAME);
+            materialName = (String) config.get(CONFIG_OBJECT_MATERIAL, DEFAULT_OBJECT_MATERIAL);
+            loreLineObjects = (List<?>) config.get(CONFIG_OBJECT_LORE, DEFAULT_OBJECT_LORE);
 
             loreLines = new ArrayList<>(loreLineObjects.size());
             for (final Object x : loreLineObjects) {
@@ -323,7 +339,7 @@ public final class FlightGemPlugin extends JavaPlugin {
         if (hadGem) {
             restoreFlightSetting(player);
             spawnGem();
-            info("Gem removed from " + player.getName(), player.getLocation());
+            info("Gem removed", player);
         }
     }
 
@@ -374,7 +390,7 @@ public final class FlightGemPlugin extends JavaPlugin {
 
 
     private String getSpawnMessage() {
-        final Object o = getConfig().get("flightgem.respawn.message");
+        final Object o = getConfig().get(CONFIG_RESPAWN_MESSAGE);
         if (o instanceof String) {
             return ChatColor.translateAlternateColorCodes('&', (String) o);
         } else {
@@ -383,7 +399,7 @@ public final class FlightGemPlugin extends JavaPlugin {
     }
 
     World getDispenserWorld() {
-        final Object w = getConfig().get("flightgem.respawn.world");
+        final Object w = getConfig().get(CONFIG_RESPAWN_WORLD);
         if (w instanceof String) {
             return Bukkit.getWorld((String) w);
         } else {
@@ -395,9 +411,9 @@ public final class FlightGemPlugin extends JavaPlugin {
         final FileConfiguration config = getConfig();
 
         final World world = getDispenserWorld();
-        final Object x = config.get("flightgem.respawn.x");
-        final Object y = config.get("flightgem.respawn.y");
-        final Object z = config.get("flightgem.respawn.z");
+        final Object x = config.get(CONFIG_RESPAWN_X);
+        final Object y = config.get(CONFIG_RESPAWN_Y);
+        final Object z = config.get(CONFIG_RESPAWN_Z);
 
         if (world != null && x != null && y != null && z != null &&
                 x instanceof Integer &&
@@ -412,10 +428,10 @@ public final class FlightGemPlugin extends JavaPlugin {
     private void setDispenserBlock(String world, int x, int y, int z) {
 
         final FileConfiguration config = getConfig();
-        config.set("flightgem.respawn.world", world);
-        config.set("flightgem.respawn.x", x);
-        config.set("flightgem.respawn.y", y);
-        config.set("flightgem.respawn.z", z);
+        config.set(CONFIG_RESPAWN_WORLD, world);
+        config.set(CONFIG_RESPAWN_X, x);
+        config.set(CONFIG_RESPAWN_Y, y);
+        config.set(CONFIG_RESPAWN_Z, z);
         saveConfig();
     }
 }

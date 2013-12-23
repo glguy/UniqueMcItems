@@ -1,6 +1,6 @@
 name: FlightGem
 main: com.gmail.emertens.flightgem.FlightGemPlugin
-version: 1.3
+version: 1.4
 author: glguy
 
 permissions:
