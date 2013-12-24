@@ -290,7 +290,6 @@ final class FlightGem implements Listener {
         }
     }
 
-
     private static boolean isBottomClick(final InventoryClickEvent event) {
         return event.getRawSlot() >= event.getView().getTopInventory().getSize();
     }
