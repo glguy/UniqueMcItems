@@ -164,13 +164,13 @@ public final class FlightGemPlugin extends JavaPlugin {
         }
     }
 
-
-    public boolean initialize() {
-        if (!initializePrototype()) {
-            return false;
+    private boolean initialize() {
+        if (initializePrototype()) {
+            initializeGemTarget();
+            return true;
         }
-        initializeGemTarget();
-        return true;
+
+        return false;
     }
 
     void initializeGemTarget() {

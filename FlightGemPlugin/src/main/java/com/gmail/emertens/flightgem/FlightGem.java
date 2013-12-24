@@ -23,6 +23,7 @@ import org.bukkit.inventory.PlayerInventory;
  */
 final class FlightGem implements Listener {
 
+    private static final String DISARM_MESSAGE = ChatColor.RED + "The gem slips from your fingers!";
     private FlightGemPlugin plugin;
 
     public FlightGem(FlightGemPlugin plugin) {
@@ -31,7 +32,7 @@ final class FlightGem implements Listener {
 
     /**
      * This cleans up players who had items in their inventory during
-     * shutdowns and crashes
+     * shutdowns and crashes. They are silently removed upon join.
      *
      * @param event Join event
      */
@@ -49,7 +50,11 @@ final class FlightGem implements Listener {
         }
     }
 
-
+    /**
+     * Detect when a player changes his equipped item by changing his
+     * active hot-bar slot. Apply the corresponding flight permissions.
+     * @param event Item held event
+     */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onItemSwitch(final PlayerItemHeldEvent event) {
         final Player player = event.getPlayer();
@@ -66,33 +71,49 @@ final class FlightGem implements Listener {
         }
     }
 
+    /**
+     * When a player quits with a gem it is removed from his inventory and respawned.
+     * @param event Quit event
+     */
     @EventHandler
     void onQuit(final PlayerQuitEvent event) {
         plugin.takeGemFromPlayer(event.getPlayer());
     }
 
+    /**
+     * When the gem despawns due to timeout, respawn it.
+     * @param event Item despawn event
+     */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onDestroy(final ItemDespawnEvent event) {
         final Item item = event.getEntity();
         if (plugin.isFlightGem(item)) {
             final Location location = item.getLocation();
             plugin.info("Despawn", location);
-            plugin.lightning(location);
+            FlightGemPlugin.lightning(location);
             plugin.spawnGem();
         }
     }
 
+    /**
+     * When the gem burns up, respawn in.
+     * @param event Combust event
+     */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onBurn(final EntityCombustEvent event) {
         final Entity entity = event.getEntity();
         if (plugin.isFlightGem(entity)) {
             final Location location = entity.getLocation();
             plugin.info("Combust", location);
-            plugin.lightning(location);
+            FlightGemPlugin.lightning(location);
             plugin.spawnGem();
         }
     }
 
+    /**
+     * When a player drops the gem, restore flight permission.
+     * @param event Drop item event
+     */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onDrop(final PlayerDropItemEvent event) {
         if (plugin.isFlightGem(event.getItemDrop())) {
@@ -102,6 +123,12 @@ final class FlightGem implements Listener {
         }
     }
 
+    /**
+     * When a player picks up the gem, track that player for /findgem.
+     * When the player picks the gem up into his hand directly, immediately
+     * allow flight.
+     * @param event Pickup item event
+     */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onPickup(final PlayerPickupItemEvent event) {
         final Item item = event.getItem();
@@ -116,6 +143,12 @@ final class FlightGem implements Listener {
         }
     }
 
+    /**
+     * Determine if the next available item pickup slot is the player's
+     * active hot-bar slot.
+     * @param player Player picking up an item
+     * @return true when the next item pickup will pickup into the player's hand
+     */
     private static boolean playerWillPickupIntoHand(final Player player) {
         final PlayerInventory inventory = player.getInventory();
 
@@ -133,6 +166,10 @@ final class FlightGem implements Listener {
         return true;
     }
 
+    /**
+     * When a player dies, restore his flight setting.
+     * @param event Death event
+     */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onDeath(final PlayerDeathEvent event) {
         if (event.getDrops().contains(plugin.getGem())) {
@@ -143,18 +180,9 @@ final class FlightGem implements Listener {
     }
 
     /**
-     * Prevent hoppers from picking up the flight gem.
-     * @param event Pickup event for hoppers
+     * When a flight gem item spawns, track it for /findgem
+     * @param event Item spawn event
      */
-    @EventHandler(ignoreCancelled = true)
-    void onInvMove(final InventoryPickupItemEvent event) {
-        final Item item = event.getItem();
-        if (plugin.isFlightGem(item)) {
-            plugin.info("Hopper pickup", item.getLocation());
-            event.setCancelled(true);
-        }
-    }
-
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onItemSpawn(final ItemSpawnEvent event) {
         final Item item = event.getEntity();
@@ -163,6 +191,105 @@ final class FlightGem implements Listener {
             plugin.info("Spawn", item.getLocation());
         }
     }
+
+
+    // It's handy to let this event run at NORMAL priority
+    // because WorldGuard mistakenly listens at HIGH priority
+    // and this allows disarm in non-pvp zones.
+
+    /**
+     * When a player is attacked with the gem in hand it will drop to the
+     * ground. This helps reduce the impact to PvP balance.
+     * @param event Entity damage by entity event
+     */
+    @EventHandler(ignoreCancelled = true)
+    void onHit(final EntityDamageByEntityEvent event) {
+        final Entity target = event.getEntity();
+
+        if (target instanceof Player) {
+            final Player player = (Player) target;
+
+            if (plugin.isFlightGem(player.getItemInHand())) {
+
+                if (plugin.hasBypass(player)) return;
+
+                player.sendMessage(DISARM_MESSAGE);
+                plugin.restoreFlightSetting(player);
+                player.setItemInHand(null);
+                plugin.info("Disarmed", player);
+                player.getWorld().dropItemNaturally(player.getLocation(), plugin.getGem());
+            }
+        }
+    }
+
+    /**
+     * Remove the gem from a player changing worlds away from the gem's home world.
+     * This keeps the gem from unbalancing Nether and End worlds. Vanilla portals
+     * do not fire teleport events.
+     * @param event Changed world event
+     */
+    @EventHandler
+    void onWorldChange(final PlayerChangedWorldEvent event) {
+        final Player player = event.getPlayer();
+        final boolean playerLeftWorld = !plugin.isEnabledWorld(player.getWorld());
+        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().containsAtLeast(plugin.getGem(), 1)) {
+            plugin.info("World change", player);
+            plugin.takeGemFromPlayer(player);
+        }
+    }
+
+    /**
+     * This event handler is needed in addition to world-change handling because
+     * world change events fire AFTER Multiverse-Inventories swaps out creative
+     * mode inventories.
+     * @param event Teleport event
+     */
+    @EventHandler(ignoreCancelled = true)
+    void onTeleport(final PlayerTeleportEvent event) {
+        final Player player = event.getPlayer();
+        final boolean playerLeftWorld = !plugin.isEnabledWorld(event.getTo().getWorld());
+        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().containsAtLeast(plugin.getGem(), 1)) {
+            plugin.info("Teleport", player);
+            plugin.takeGemFromPlayer(player);
+        }
+    }
+
+    /**
+     * Respawn the gem before it is store (possibly for a long time) in an
+     * unloading chunk. This typically happens when a player dies while on
+     * his own and results in the gem practically getting lost.
+     * @param event Unload chunk event
+     */
+    @EventHandler(ignoreCancelled = true)
+    void onUnloadChunk(final ChunkUnloadEvent event) {
+        for (final Entity e : event.getChunk().getEntities()) {
+            if (plugin.isFlightGem(e)) {
+                final Location location = e.getLocation();
+                plugin.info("Chunk unload", location);
+                e.remove();
+                FlightGemPlugin.lightning(location);
+                plugin.spawnGem();
+            }
+        }
+    }
+
+
+    /**
+     * Prevent players from stashing the gem in item frames.
+     * @param event Interact entity event
+     */
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    void onItemFramePlace(final PlayerInteractEntityEvent event) {
+        final Entity target = event.getRightClicked();
+        if (target instanceof ItemFrame) {
+            final Player player = event.getPlayer();
+            if (plugin.isFlightGem(player.getItemInHand()) && !plugin.hasBypass(player)) {
+                plugin.info("Item frame", player);
+                event.setCancelled(true);
+            }
+        }
+    }
+
 
     private static boolean isBottomClick(final InventoryClickEvent event) {
         return event.getRawSlot() >= event.getView().getTopInventory().getSize();
@@ -183,6 +310,10 @@ final class FlightGem implements Listener {
         return false;
     }
 
+    /**
+     * Prevent players from transferring the gem into containers or crafting slots
+     * @param event Inventory click event
+     */
     @EventHandler(ignoreCancelled = true)
     void onInventoryClick(final InventoryClickEvent event) {
 
@@ -214,8 +345,8 @@ final class FlightGem implements Listener {
 
         final boolean isGemHotBarSwap =
                 (InventoryAction.HOTBAR_SWAP.equals(action) ||
-                 InventoryAction.HOTBAR_MOVE_AND_READD.equals(action))
-                && plugin.isFlightGem(human.getInventory().getItem(event.getHotbarButton()));
+                        InventoryAction.HOTBAR_MOVE_AND_READD.equals(action))
+                        && plugin.isFlightGem(human.getInventory().getItem(event.getHotbarButton()));
 
         // Ignore no-op swap
         if (InventoryType.SlotType.QUICKBAR.equals(event.getSlotType())
@@ -236,16 +367,16 @@ final class FlightGem implements Listener {
                 && InventoryType.SlotType.QUICKBAR.equals(event.getSlotType())
                 && event.getSlot() == player.getInventory().getHeldItemSlot()
                 && (InventoryAction.PLACE_ALL.equals(action) ||
-                    InventoryAction.PLACE_ONE.equals(action) ||
-                    InventoryAction.SWAP_WITH_CURSOR.equals(action))
+                InventoryAction.PLACE_ONE.equals(action) ||
+                InventoryAction.SWAP_WITH_CURSOR.equals(action))
                 ||
                 currentIsGem
-                && InventoryAction.HOTBAR_SWAP.equals(action)
-                && event.getHotbarButton() == player.getInventory().getHeldItemSlot()
+                        && InventoryAction.HOTBAR_SWAP.equals(action)
+                        && event.getHotbarButton() == player.getInventory().getHeldItemSlot()
                 ||
                 isGemHotBarSwap
-                && InventoryType.SlotType.QUICKBAR.equals(event.getSlotType())
-                && event.getSlot() == player.getInventory().getHeldItemSlot()
+                        && InventoryType.SlotType.QUICKBAR.equals(event.getSlotType())
+                        && event.getSlot() == player.getInventory().getHeldItemSlot()
                 ) {
             plugin.allowFlight(player);
             return;
@@ -265,84 +396,34 @@ final class FlightGem implements Listener {
         }
     }
 
+    /**
+     * Prevent players from "smearing" the gem into containers.
+     * @param event Inventory drag event
+     */
     @EventHandler(ignoreCancelled = true)
     void onInventoryDrag(final InventoryDragEvent event) {
         final HumanEntity player = event.getWhoClicked();
 
         if (plugin.isFlightGem(event.getOldCursor()) &&
-            !plugin.hasBypass(player) &&
-            isBadDrag(event)) {
+                !plugin.hasBypass(player) &&
+                isBadDrag(event)) {
 
             plugin.info("Inventory drag", player);
             event.setCancelled(true);
         }
     }
 
-    // It's handy to let this event run at NORMAL priority
-    // because WorldGuard mistakenly listens at HIGH priority
-    // and this allows disarm in non-pvp zones.
+
+    /**
+     * Prevent hoppers from picking up the flight gem.
+     * @param event Pickup event for hoppers
+     */
     @EventHandler(ignoreCancelled = true)
-    void onHit(final EntityDamageByEntityEvent event) {
-        final Entity target = event.getEntity();
-
-        if (target instanceof Player) {
-            final Player player = (Player) target;
-
-            if (plugin.isFlightGem(player.getItemInHand())) {
-
-                if (plugin.hasBypass(player)) return;
-
-                player.sendMessage(ChatColor.RED + "The gem slips from your fingers!");
-                plugin.restoreFlightSetting(player);
-                player.setItemInHand(null);
-                plugin.info("Disarmed", player);
-                player.getWorld().dropItemNaturally(player.getLocation(), plugin.getGem());
-            }
-        }
-    }
-
-    @EventHandler
-    void onWorldChange(final PlayerChangedWorldEvent event) {
-        final Player player = event.getPlayer();
-        final boolean playerLeftWorld = !plugin.isEnabledWorld(player.getWorld());
-        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().containsAtLeast(plugin.getGem(), 1)) {
-            plugin.info("World change", player);
-            plugin.takeGemFromPlayer(player);
-        }
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    void onTeleport(final PlayerTeleportEvent event) {
-        final Player player = event.getPlayer();
-        final boolean playerLeftWorld = !plugin.isEnabledWorld(event.getTo().getWorld());
-        if (playerLeftWorld && !plugin.hasBypass(player) && player.getInventory().containsAtLeast(plugin.getGem(), 1)) {
-            plugin.info("Teleport", player);
-            plugin.takeGemFromPlayer(player);
-        }
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    void onUnloadChunk(final ChunkUnloadEvent event) {
-        for (final Entity e : event.getChunk().getEntities()) {
-            if (plugin.isFlightGem(e)) {
-                final Location location = e.getLocation();
-                plugin.info("Chunk unload", location);
-                e.remove();
-                plugin.lightning(location);
-                plugin.spawnGem();
-            }
-        }
-    }
-
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
-    void onItemFramePlace(final PlayerInteractEntityEvent event) {
-        final Entity target = event.getRightClicked();
-        if (target instanceof ItemFrame) {
-            final Player player = event.getPlayer();
-            if (plugin.isFlightGem(player.getItemInHand()) && !plugin.hasBypass(player)) {
-                plugin.info("Item frame", player);
-                event.setCancelled(true);
-            }
+    void onInvMove(final InventoryPickupItemEvent event) {
+        final Item item = event.getItem();
+        if (plugin.isFlightGem(item)) {
+            plugin.info("Hopper pickup", item.getLocation());
+            event.setCancelled(true);
         }
     }
 }

@@ -20,7 +20,7 @@ final class FlightTracker {
     private final Map<String, Boolean> oldAllowFlightSettings = new HashMap<>();
     private FlightGemPlugin plugin;
 
-    public FlightTracker(final FlightGemPlugin plugin) {
+    FlightTracker(final FlightGemPlugin plugin) {
         this.plugin = plugin;
     }
 

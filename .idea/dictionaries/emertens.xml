@@ -2,10 +2,14 @@
   <dictionary name="emertens">
     <words>
       <w>bukkit</w>
+      <w>combust</w>
+      <w>despawn</w>
+      <w>despawns</w>
       <w>flightgem</w>
       <w>glguy's</w>
       <w>mertens</w>
       <w>respawn</w>
+      <w>respawned</w>
       <w>teleport</w>
     </words>
   </dictionary>
