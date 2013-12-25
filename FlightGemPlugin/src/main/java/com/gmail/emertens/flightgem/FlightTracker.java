@@ -16,7 +16,7 @@ import java.util.*;
 final class FlightTracker {
 
     private FlightGemPlugin plugin;
-    private Set<String> fliers = new HashSet<>();
+    private Collection<String> fliers = new HashSet<>();
 
     FlightTracker(final FlightGemPlugin plugin) {
         this.plugin = plugin;
@@ -47,7 +47,7 @@ final class FlightTracker {
     }
 
     void verifyStatus() {
-        final List<Player> players = new ArrayList<>();
+        final Collection<Player> players = new ArrayList<>(1);
         for (final String name : fliers) {
             final Player player = Bukkit.getPlayer(name);
             if (player != null) {
