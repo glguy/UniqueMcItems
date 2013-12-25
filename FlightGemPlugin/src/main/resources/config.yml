@@ -1,5 +1,4 @@
 flightgem:
-  verbose: YES
   respawn:
     message: '&7&oFlight gem has returned!'
   object:

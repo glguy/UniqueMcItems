@@ -57,7 +57,7 @@ final class FlightTracker {
             }
         }
         for (final Player player : players) {
-            plugin.info("Watchdog caught", player);
+            plugin.warning("Watchdog caught", player);
             restoreFlightSetting(player);
         }
     }

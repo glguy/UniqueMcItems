@@ -20,6 +20,7 @@ import org.bukkit.util.BlockIterator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
 
 /**
  * Copyright 2013 Eric Mertens
@@ -54,6 +55,7 @@ public final class FlightGemPlugin extends JavaPlugin {
     private static final String DEFAULT_OBJECT_NAME = "Flight Gem";
     private static final String DEFAULT_OBJECT_MATERIAL = "DIAMOND";
     private static final List<String> DEFAULT_OBJECT_LORE = Arrays.asList("Flight");
+    private static final String DEFAULT_RESPAWN_MESSAGE = "&7Flight gem has returned!";
 
     private final FlightTracker flightTracker = new FlightTracker(this);
     private Entity gemTarget = null;
@@ -80,12 +82,20 @@ public final class FlightGemPlugin extends JavaPlugin {
         return player.hasPermission(BYPASS_PERMISSION);
     }
 
+    void warning(final String message, final HumanEntity player) {
+        log(message + ", " + player.getName(), player.getLocation(), Level.WARNING);
+    }
+
     void info(final String message, final HumanEntity player) {
         info(message + ", " + player.getName(), player.getLocation());
     }
 
     void info(final String message, final Location location) {
-        getLogger().info(
+        log(message, location, Level.INFO);
+    }
+
+    void log(final String message, final Location location, final Level level) {
+        getLogger().log(level,
                 String.format("%1$s @ %2$s %3$d %4$d %5$d",
                         message,
                         location.getWorld().getName(),
@@ -165,12 +175,24 @@ public final class FlightGemPlugin extends JavaPlugin {
     }
 
     private boolean initialize() {
+
+        initializeVerbosity();
+
         if (initializePrototype()) {
             initializeGemTarget();
             return true;
         }
 
         return false;
+    }
+
+    private void initializeVerbosity() {
+        try {
+            final Level level = Level.parse (getConfig().getString("flightgem.logginglevel"));
+            getLogger().setLevel(level);
+        } catch (IllegalArgumentException e) {
+            getLogger().warning("flightgem.logginglevel: bad level ignored");
+        }
     }
 
     void initializeGemTarget() {
@@ -298,22 +320,19 @@ public final class FlightGemPlugin extends JavaPlugin {
     private boolean initializePrototype() {
 
         final FileConfiguration config = getConfig();
-        final String displayName;
-        final String materialName;
-        final List<?> loreLineObjects;
-        final List<String> loreLines;
 
-        try {
-            displayName = (String) config.get(CONFIG_OBJECT_NAME, DEFAULT_OBJECT_NAME);
-            materialName = (String) config.get(CONFIG_OBJECT_MATERIAL, DEFAULT_OBJECT_MATERIAL);
-            loreLineObjects = (List<?>) config.get(CONFIG_OBJECT_LORE, DEFAULT_OBJECT_LORE);
+        final String displayName = config.getString(CONFIG_OBJECT_NAME, DEFAULT_OBJECT_NAME);
+        final String materialName = config.getString(CONFIG_OBJECT_MATERIAL, DEFAULT_OBJECT_MATERIAL);
+        final List<?> loreLineObjects = config.getList(CONFIG_OBJECT_LORE, DEFAULT_OBJECT_LORE);
 
-            loreLines = new ArrayList<>(loreLineObjects.size());
-            for (final Object x : loreLineObjects) {
+        final List<String> loreLines = new ArrayList<>(loreLineObjects.size());
+        for (final Object x : loreLineObjects) {
+            if (String.class.equals(x.getClass())) {
                 loreLines.add((String) x);
+            } else {
+                getLogger().warning("Bad lore");
+                return false;
             }
-        } catch (ClassCastException e) {
-            return false;
         }
 
         final Material material = Material.getMaterial(materialName);
@@ -390,18 +409,14 @@ public final class FlightGemPlugin extends JavaPlugin {
 
 
     private String getSpawnMessage() {
-        final Object o = getConfig().get(CONFIG_RESPAWN_MESSAGE);
-        if (o instanceof String) {
-            return ChatColor.translateAlternateColorCodes('&', (String) o);
-        } else {
-            return null;
-        }
+        final String o = getConfig().getString(CONFIG_RESPAWN_MESSAGE, DEFAULT_RESPAWN_MESSAGE);
+        return ChatColor.translateAlternateColorCodes('&', o);
     }
 
     World getDispenserWorld() {
-        final Object w = getConfig().get(CONFIG_RESPAWN_WORLD);
-        if (w instanceof String) {
-            return Bukkit.getWorld((String) w);
+        final String w = getConfig().getString(CONFIG_RESPAWN_WORLD);
+        if (w != null) {
+            return Bukkit.getWorld(w);
         } else {
             return null;
         }
@@ -411,18 +426,15 @@ public final class FlightGemPlugin extends JavaPlugin {
         final FileConfiguration config = getConfig();
 
         final World world = getDispenserWorld();
-        final Object x = config.get(CONFIG_RESPAWN_X);
-        final Object y = config.get(CONFIG_RESPAWN_Y);
-        final Object z = config.get(CONFIG_RESPAWN_Z);
+        final int x = config.getInt(CONFIG_RESPAWN_X);
+        final int y = config.getInt(CONFIG_RESPAWN_Y);
+        final int z = config.getInt(CONFIG_RESPAWN_Z);
 
-        if (world != null && x != null && y != null && z != null &&
-                x instanceof Integer &&
-                y instanceof Integer &&
-                z instanceof Integer) {
-
-            return world.getBlockAt((Integer) x, (Integer) y, (Integer) z);
+        if (world != null) {
+            return world.getBlockAt(x, y, z);
+        } else {
+            return null;
         }
-        return null;
     }
 
     private void setDispenserBlock(String world, int x, int y, int z) {
