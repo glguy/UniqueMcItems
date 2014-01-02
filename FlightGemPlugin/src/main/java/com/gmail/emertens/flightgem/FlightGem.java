@@ -183,12 +183,24 @@ final class FlightGem implements Listener {
      * When a flight gem item spawns, track it for /findgem
      * @param event Item spawn event
      */
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true)
     void onItemSpawn(final ItemSpawnEvent event) {
         final Item item = event.getEntity();
         if (plugin.isFlightGem(item)) {
-            plugin.trackGem(item);
-            plugin.info("Spawn", item.getLocation());
+
+            // We won't get an event if LAVA destroys the gem, so if we spawn
+            // in a lava block, respawn immediately.
+
+            final Material material = item.getLocation().getBlock().getType();
+            if (Material.LAVA.equals(material) || Material.STATIONARY_LAVA.equals(material)) {
+                event.setCancelled(true);
+                FlightGemPlugin.lightning(item.getLocation());
+                plugin.spawnGem();
+                plugin.info("Lava", item.getLocation());
+            } else {
+                plugin.trackGem(item);
+                plugin.info("Spawn", item.getLocation());
+            }
         }
     }
 
