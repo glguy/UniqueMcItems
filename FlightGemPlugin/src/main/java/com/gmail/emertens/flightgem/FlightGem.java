@@ -11,6 +11,7 @@ import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.world.ChunkUnloadEvent;
+import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -281,10 +282,20 @@ final class FlightGem implements Listener {
                 e.remove();
                 FlightGemPlugin.lightning(location);
                 plugin.spawnGem();
+            } else if (e instanceof LivingEntity) {
+                final LivingEntity livingEntity = (LivingEntity) e;
+                final EntityEquipment equipment = livingEntity.getEquipment();
+
+                if (plugin.isFlightGem(equipment.getItemInHand())) {
+                    equipment.setItemInHand(null);
+                    final Location location = e.getLocation();
+                    plugin.info("Took from mob", location);
+                    FlightGemPlugin.lightning(location);
+                    plugin.spawnGem();
+                }
             }
         }
     }
-
 
     /**
      * Prevent players from stashing the gem in item frames.
