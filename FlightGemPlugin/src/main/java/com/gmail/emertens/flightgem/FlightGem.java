@@ -193,11 +193,13 @@ final class FlightGem implements Listener {
             // in a lava block, respawn immediately.
 
             final Material material = item.getLocation().getBlock().getType();
-            if (Material.LAVA.equals(material) || Material.STATIONARY_LAVA.equals(material)) {
+            if (Material.LAVA.equals(material)
+                    || Material.STATIONARY_LAVA.equals(material)
+                    || Material.FIRE.equals(material)) {
                 event.setCancelled(true);
                 FlightGemPlugin.lightning(item.getLocation());
-                plugin.spawnGem();
                 plugin.info("Lava", item.getLocation());
+                plugin.spawnGem();
             } else {
                 plugin.trackGem(item);
                 plugin.info("Spawn", item.getLocation());
