@@ -284,7 +284,9 @@ final class FlightGem implements Listener {
                 e.remove();
                 FlightGemPlugin.lightning(location);
                 plugin.spawnGem();
-            } else if (e instanceof LivingEntity) {
+            } else if (e instanceof LivingEntity && !(e instanceof Player)) {
+                // Player check is because glitchy warps can leave the player in an unloading
+                // chunk before moving him.
                 final LivingEntity livingEntity = (LivingEntity) e;
                 final EntityEquipment equipment = livingEntity.getEquipment();
 
