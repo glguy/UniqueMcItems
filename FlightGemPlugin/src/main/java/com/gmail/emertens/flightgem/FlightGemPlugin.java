@@ -350,8 +350,8 @@ public final class FlightGemPlugin extends JavaPlugin {
 
     void takeGemFromPlayer(final Player player) {
         final Inventory inventory = player.getInventory();
-        boolean hadGem = inventory.contains(gemPrototype);
-        while (inventory.contains(gemPrototype)) {
+        boolean hadGem = inventory.containsAtLeast(gemPrototype,1);
+        while (inventory.containsAtLeast(gemPrototype,1)) {
             inventory.remove(gemPrototype);
         }
 

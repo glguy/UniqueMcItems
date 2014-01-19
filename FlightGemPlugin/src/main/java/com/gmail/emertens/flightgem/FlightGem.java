@@ -189,6 +189,14 @@ final class FlightGem implements Listener {
         final Item item = event.getEntity();
         if (plugin.isFlightGem(item)) {
 
+            if (!plugin.isEnabledWorld(item.getLocation().getWorld())) {
+                event.setCancelled(true);
+                plugin.info("Spawn in wrong world", item.getLocation());
+                event.setCancelled(true);
+                item.remove();
+                return;
+            }
+
             // We won't get an event if LAVA destroys the gem, so if we spawn
             // in a lava block, respawn immediately.
 
