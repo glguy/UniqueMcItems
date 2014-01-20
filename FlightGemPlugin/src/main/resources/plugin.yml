@@ -6,16 +6,16 @@ author: glguy
 permissions:
   flightgem.bypass:
     default: op
-    description: bypass wrath restrictions
+    description: Bypass gem storage restrictions
   flightgem.creategem:
     default: op
-    description: Able to create flight gems
+    description: Able to create new flight gems
   flightgem.setflightrespawn:
     default: op
     description: Able to set the flight gem respawn block
   flightgem.findgem:
     default: true
-    description: Allow the use of /findgem
+    description: Able to use /findgem
 
 commands:
   flightgem:
