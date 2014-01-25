@@ -188,7 +188,7 @@ public final class FlightGemPlugin extends JavaPlugin {
 
     private void initializeVerbosity() {
         try {
-            final Level level = Level.parse(getConfig().getString("flightgem.logginglevel"));
+            final Level level = Level.parse(getConfig().getString("flightgem.logginglevel", "INFO"));
             getLogger().setLevel(level);
         } catch (IllegalArgumentException e) {
             getLogger().warning("flightgem.logginglevel: bad level ignored");

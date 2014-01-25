@@ -1,4 +1,5 @@
 flightgem:
+  logginglevel: INFO
   respawn:
     message: '&7&oFlight gem has returned!'
   object:
