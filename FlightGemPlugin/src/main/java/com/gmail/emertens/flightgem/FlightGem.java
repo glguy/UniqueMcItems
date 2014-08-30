@@ -16,6 +16,9 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
+import java.util.Collection;
+import java.util.Iterator;
+
 /**
  * Copyright 2013 Eric Mertens
  *
@@ -168,15 +171,29 @@ final class FlightGem implements Listener {
     }
 
     /**
-     * When a player dies, restore his flight setting.
+     * When a player dies, restore his flight setting. Automatically drop the gem
+     * in order to work around death-chest plugins.
      * @param event Death event
      */
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     void onDeath(final PlayerDeathEvent event) {
-        if (event.getDrops().contains(plugin.getGem())) {
+
+        final Collection<ItemStack> drops = event.getDrops();
+        final Iterator<ItemStack> iterator = drops.iterator();
+        boolean hadFlightGem = false;
+
+        while (iterator.hasNext()) {
+            if (plugin.isFlightGem(iterator.next())) {
+                iterator.remove();
+                hadFlightGem = true;
+            }
+        }
+
+        if (hadFlightGem) {
             final Player player = event.getEntity();
             plugin.info("Death", player);
             plugin.restoreFlightSetting(player);
+            player.getWorld().dropItemNaturally(player.getLocation(), plugin.getGem());
         }
     }
 

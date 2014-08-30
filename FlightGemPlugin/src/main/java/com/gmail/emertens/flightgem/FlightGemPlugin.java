@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.logging.Level;
 
 /**
- * Copyright 2013 Eric Mertens
+ * Copyright 2013-2014 Eric Mertens
  *
  * This plugin implements a unique server-wide shared
  * object which grants its holder flight.
