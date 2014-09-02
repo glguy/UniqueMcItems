@@ -2,6 +2,7 @@ name: FlightGem
 main: com.gmail.emertens.flightgem.FlightGemPlugin
 version: 1.6
 author: glguy
+softdepend: [Essentials]
 
 permissions:
   flightgem.bypass:

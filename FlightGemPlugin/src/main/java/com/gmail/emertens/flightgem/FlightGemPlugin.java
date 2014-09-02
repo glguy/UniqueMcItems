@@ -1,5 +1,6 @@
 package com.gmail.emertens.flightgem;
 
+import net.ess3.api.events.AfkStatusChangeEvent;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;

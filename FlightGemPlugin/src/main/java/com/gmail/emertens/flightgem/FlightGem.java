@@ -1,5 +1,7 @@
 package com.gmail.emertens.flightgem;
 
+import net.ess3.api.IUser;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -15,6 +17,8 @@ import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+
+import net.ess3.api.events.AfkStatusChangeEvent;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -476,5 +480,21 @@ final class FlightGem implements Listener {
             plugin.info("Hopper pickup", item.getLocation());
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    void onAfkChange(final AfkStatusChangeEvent event) {
+
+        // Only interested when *becoming* AFK
+        if (event.getValue() == false) return;
+
+        final IUser user = event.getAffected();
+        final Player player = Bukkit.getPlayer(user.getName());
+
+        // Don't rob privileged players
+        if (plugin.hasBypass(player)) return;
+
+        plugin.info("afk", player);
+        plugin.takeGemFromPlayer(player);
     }
 }
