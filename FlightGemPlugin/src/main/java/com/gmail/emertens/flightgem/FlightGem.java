@@ -485,16 +485,14 @@ final class FlightGem implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onAfkChange(final AfkStatusChangeEvent event) {
 
-        // Only interested when *becoming* AFK
-        if (event.getValue() == false) return;
+        final boolean becomingAfk = event.getValue();
+        if (!becomingAfk) return;
 
         final IUser user = event.getAffected();
         final Player player = Bukkit.getPlayer(user.getName());
 
-        // Don't rob privileged players
         if (plugin.hasBypass(player)) return;
 
-        plugin.info("afk", player);
         plugin.takeGemFromPlayer(player);
     }
 }
